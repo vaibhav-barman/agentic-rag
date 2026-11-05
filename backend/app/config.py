@@ -24,9 +24,10 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_jwt_audience: str = "authenticated"
 
-    # OpenAI (Module 1)
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4.1-mini"
+    # OpenRouter (OpenAI-compatible; use the OpenAI SDK with base_url)
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "openai/gpt-4.1-mini"
 
     # LangSmith
     langsmith_api_key: str = ""

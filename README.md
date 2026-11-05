@@ -1,7 +1,7 @@
 # Agentic RAG
 
 RAG app with a threaded chat (default view) and a document ingestion page.
-Stack: React + Vite + Tailwind + shadcn/ui, FastAPI, Supabase, OpenAI, LangSmith.
+Stack: React + Vite + Tailwind + shadcn/ui, FastAPI, Supabase, OpenRouter (OpenAI-compatible API), LangSmith.
 
 ```
 backend/              FastAPI app (venv, requirements.txt, .env.example)
@@ -51,4 +51,9 @@ deletes them afterwards.
 ```bash
 cd frontend
 npm run build && npm run lint
+npx playwright install chromium         # once
+npm run test:e2e                        # browser auth flow; starts backend + Vite itself
 ```
+The e2e suite creates a confirmed throwaway user with the service-role key from
+`backend/.env` (no email is sent) and deletes it afterwards. Sign-up responses are
+mocked so no confirmation emails go out.
