@@ -70,13 +70,11 @@ def test_user_b_cannot_see_or_modify_user_a_rows(users):
     a.table("messages").insert(
         {"thread_id": thread["id"], "user_id": a_id, "role": "user", "content": "hi"}
     ).execute()
-    a.table("user_vector_stores").insert({"user_id": a_id, "vector_store_id": "vs_a"}).execute()
     doc = a.table("documents").insert({"user_id": a_id, "filename": "a.txt"}).execute().data[0]
 
     # Select: B sees nothing of A's.
     assert b.table("threads").select("*").eq("id", thread["id"]).execute().data == []
     assert b.table("messages").select("*").eq("thread_id", thread["id"]).execute().data == []
-    assert b.table("user_vector_stores").select("*").eq("user_id", a_id).execute().data == []
     assert b.table("documents").select("*").eq("id", doc["id"]).execute().data == []
 
     # Update / delete: B affects zero rows; A's data is untouched.
@@ -95,11 +93,6 @@ def test_inserts_with_foreign_user_id_are_rejected(users):
     assert _rejected(
         lambda: b.table("documents").insert({"user_id": a_id, "filename": "x.txt"}).execute()
     )
-    assert _rejected(
-        lambda: b.table("user_vector_stores")
-        .insert({"user_id": a_id, "vector_store_id": "vs_x"})
-        .execute()
-    )
 
     # B can't write a message into A's thread, even with B's own user_id.
     thread = a.table("threads").insert({"user_id": a_id, "title": "A"}).execute().data[0]
@@ -114,5 +107,47 @@ def test_anonymous_client_sees_nothing(users):
     from supabase import create_client
 
     anon = create_client(URL, ANON)
-    for table in ("threads", "messages", "user_vector_stores", "documents"):
+    for table in ("threads", "messages", "documents", "document_chunks"):
         assert anon.table(table).select("*").execute().data == []
+
+
+DIMS = 1024
+
+
+def _vec(hot: int) -> list[float]:
+    v = [0.0] * DIMS
+    v[hot] = 1.0
+    return v
+
+
+def test_chunks_and_match_function_are_isolated(users):
+    (a_id, a), (b_id, b) = users
+
+    doc = a.table("documents").insert(
+        {"user_id": a_id, "filename": "a-secret.txt", "status": "completed"}
+    ).execute().data[0]
+    a.table("document_chunks").insert(
+        {"document_id": doc["id"], "user_id": a_id, "chunk_index": 0,
+         "content": "A's secret fact", "embedding": _vec(0)}
+    ).execute()
+
+    # A finds its own chunk through the RPC.
+    hits = a.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5}).execute().data
+    assert [h["content"] for h in hits] == ["A's secret fact"]
+    assert hits[0]["filename"] == "a-secret.txt" and hits[0]["similarity"] > 0.99
+
+    # B sees nothing, directly or through the RPC.
+    assert b.table("document_chunks").select("*").execute().data == []
+    assert b.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5}).execute().data == []
+
+    # B can't attach chunks to A's document.
+    assert _rejected(
+        lambda: b.table("document_chunks").insert(
+            {"document_id": doc["id"], "user_id": b_id, "chunk_index": 1,
+             "content": "x", "embedding": _vec(1)}
+        ).execute()
+    )
+
+    # Deleting the document cascades to its chunks.
+    a.table("documents").delete().eq("id", doc["id"]).execute()
+    assert a.table("document_chunks").select("id").execute().data == []

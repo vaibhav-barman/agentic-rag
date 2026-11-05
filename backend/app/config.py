@@ -28,6 +28,19 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "openai/gpt-4.1-mini"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
+    # Must match document_chunks.embedding (vector(1024)) in migration 0003.
+    embedding_dimensions: int = 1024
+
+    # Chat
+    chat_history_limit: int = 20
+    file_search_top_k: int = 5
+    max_tool_rounds: int = 3
+
+    # Ingestion
+    max_upload_bytes: int = 10 * 1024 * 1024
+    chunk_size_chars: int = 3200
+    chunk_overlap_chars: int = 400
 
     # LangSmith
     langsmith_api_key: str = ""

@@ -45,7 +45,7 @@ test('log in, /me email, nav, reload persistence, log out', async ({ page }) => 
 
   // Lands on Chat (default route).
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByRole('heading', { name: 'Chat' })).toBeVisible()
+  await expect(page.getByText('How can I help?')).toBeVisible()
 
   // Backend verified the Supabase JWT and returned our email.
   const me = await meResponse
@@ -62,7 +62,7 @@ test('log in, /me email, nav, reload persistence, log out', async ({ page }) => 
 
   // Reload keeps the session.
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Chat' })).toBeVisible()
+  await expect(page.getByText('How can I help?')).toBeVisible()
   await expect(page.getByTestId('me-email')).toHaveText(user.email)
 
   // Log out -> login page; protected route now redirects.
@@ -74,7 +74,7 @@ test('log in, /me email, nav, reload persistence, log out', async ({ page }) => 
 
 test('signed-in visit to /login redirects to Chat', async ({ page }) => {
   await logIn(page, user.email, user.password)
-  await expect(page.getByRole('heading', { name: 'Chat' })).toBeVisible()
+  await expect(page.getByText('How can I help?')).toBeVisible()
   await page.goto('/login')
   await expect(page).toHaveURL(/\/$/)
 })

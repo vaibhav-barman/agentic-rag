@@ -54,3 +54,88 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
 export type Me = { id: string; email: string | null }
 
 export const getMe = () => apiJson<Me>('/me')
+
+// --- Threads & chat -------------------------------------------------------
+
+export type Thread = { id: string; title: string | null; created_at: string; updated_at: string | null }
+
+export type Source = {
+  document_id: string
+  filename: string
+  chunk_index: number
+  content: string
+  similarity: number
+}
+
+export type Message = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  sources?: Source[] | null
+  created_at: string
+}
+
+export const listThreads = () => apiJson<Thread[]>('/threads')
+export const createThread = () => apiJson<Thread>('/threads', { method: 'POST', body: '{}' })
+export const deleteThread = (id: string) => apiFetch(`/threads/${id}`, { method: 'DELETE' })
+export const listMessages = (threadId: string) => apiJson<Message[]>(`/threads/${threadId}/messages`)
+
+export type ChatEvent =
+  | { event: 'user_message'; data: { id: string } }
+  | { event: 'delta'; data: { text: string } }
+  | { event: 'sources'; data: { query: string; sources: Source[] } }
+  | { event: 'done'; data: { message_id: string; title: string | null } }
+  | { event: 'error'; data: { message: string } }
+
+/** POST a chat message and yield SSE events as they arrive (fetch + stream reader). */
+export async function* streamChat(
+  threadId: string,
+  content: string,
+  signal?: AbortSignal,
+): AsyncGenerator<ChatEvent> {
+  const response = await apiFetch(`/threads/${threadId}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify({ content }),
+    signal,
+  })
+  if (!response.body) throw new Error('No response body')
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ''
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value
+    let boundary: number
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, boundary)
+      buffer = buffer.slice(boundary + 2)
+      let event = 'message'
+      let data = ''
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7)
+        else if (line.startsWith('data: ')) data += line.slice(6)
+      }
+      if (data) yield { event, data: JSON.parse(data) } as ChatEvent
+    }
+  }
+}
+
+// --- Documents --------------------------------------------------------------
+
+export type DocumentRow = {
+  id: string
+  filename: string
+  status: 'processing' | 'completed' | 'failed'
+  error: string | null
+  chunk_count: number
+  created_at: string
+}
+
+export const listDocuments = () => apiJson<DocumentRow[]>('/documents')
+export const deleteDocument = (id: string) => apiFetch(`/documents/${id}`, { method: 'DELETE' })
+export function uploadDocument(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return apiJson<DocumentRow>('/documents', { method: 'POST', body })
+}
