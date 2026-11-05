@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { createConfirmedUser, deleteUser, type TestUser } from './supabaseAdmin'
 
-// Live tests against the real backend, Supabase and OpenRouter model.
+// Live tests against the real backend, Supabase and Gemini model.
 // Free models can be slow, so timeouts are generous.
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
 

@@ -1,6 +1,6 @@
-"""The only module that talks to the LLM provider (OpenRouter, OpenAI-compatible API).
+"""The only module that talks to the LLM provider (Google Gemini API).
 
-Uses the raw `openai` SDK pointed at OPENROUTER_BASE_URL. When LangSmith tracing
+Uses the raw `openai` SDK pointed at Gemini's OpenAI-compatible endpoint (GEMINI_BASE_URL). When LangSmith tracing
 is enabled the client is wrapped so every call is traced.
 """
 
@@ -53,8 +53,8 @@ def configure_langsmith_env() -> None:
 def get_client() -> AsyncOpenAI:
     settings = get_settings()
     client = AsyncOpenAI(
-        base_url=settings.openrouter_base_url,
-        api_key=settings.openrouter_api_key or "missing-key",
+        base_url=settings.gemini_base_url,
+        api_key=settings.gemini_api_key or "missing-key",
     )
     configure_langsmith_env()
     if settings.langsmith_tracing and settings.langsmith_api_key:
@@ -70,7 +70,7 @@ async def stream_chat(
     """Stream a chat completion: yields text deltas, then (if any) the tool calls."""
     settings = get_settings()
     kwargs: dict = {
-        "model": settings.openrouter_model,
+        "model": settings.gemini_model,
         "messages": messages,
         "stream": True,
         "stream_options": {"include_usage": True},
@@ -87,7 +87,9 @@ async def stream_chat(
         if delta.content:
             yield StreamEvent(type="delta", text=delta.content)
         for tc in delta.tool_calls or []:
-            call = calls.setdefault(tc.index, ToolCall(id=tc.id or "", name=""))
+            # Gemini may omit `index` and send each call whole; key those by position.
+            key = tc.index if tc.index is not None else len(calls)
+            call = calls.setdefault(key, ToolCall(id=tc.id or f"call_{key}", name=""))
             if tc.id:
                 call.id = tc.id
             if tc.function and tc.function.name:
@@ -101,10 +103,10 @@ async def stream_chat(
 async def embed(texts: list[str]) -> list[list[float]]:
     """Embed texts in batches; returns one vector per input, in order."""
     settings = get_settings()
-    model = settings.openrouter_embedding_model
+    model = settings.gemini_embedding_model
     extra: dict = {}
-    # OpenAI text-embedding-3-* can be shortened to match the DB column.
-    if model.startswith("openai/text-embedding-3"):
+    # Gemini and OpenAI text-embedding-3 models can be shortened to match the DB column.
+    if "gemini-embedding" in model or "text-embedding-3" in model:
         extra["dimensions"] = settings.embedding_dimensions
     vectors: list[list[float]] = []
     for start in range(0, len(texts), 64):

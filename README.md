@@ -1,7 +1,7 @@
 # Agentic RAG
 
 RAG app with a threaded chat (default view) and a document ingestion page.
-Stack: React + Vite + Tailwind + shadcn/ui, FastAPI, Supabase, OpenRouter (OpenAI-compatible API), LangSmith.
+Stack: React + Vite + Tailwind + shadcn/ui, FastAPI, Supabase, Google Gemini API, LangSmith.
 
 ```
 backend/              FastAPI app (venv, requirements.txt, .env.example)
@@ -14,7 +14,7 @@ supabase/migrations/  SQL migrations (run in order)
 ### 1. Supabase (hosted)
 1. Create a project at supabase.com.
 2. Open **SQL Editor** and run each file in `supabase/migrations/` in order
-   (`0001_init.sql`, `0002_openrouter.sql`, `0003_document_chunks.sql`).
+   (`0001_init.sql`, `0002_app_managed_chat.sql`, `0003_document_chunks.sql`).
 3. Under **Authentication → Providers → Email**, keep email enabled. For local dev you
    can turn off "Confirm email" so sign-up logs you straight in.
 4. From **Project Settings → API keys** copy the URL, anon (publishable) key and
@@ -53,17 +53,15 @@ deletes them afterwards.
 cd frontend
 npm run build && npm run lint
 npx playwright install chromium         # once
-npm run test:e2e                        # auth, chat, memory, upload + file search (live OpenRouter)
+npm run test:e2e                        # auth, chat, memory, upload + file search (live Gemini API)
 ```
 The e2e suite creates a confirmed throwaway user with the service-role key from
 `backend/.env` (no email is sent) and deletes it afterwards. Sign-up responses are
 mocked so no confirmation emails go out.
 
 ## Models
-Set in `backend/.env`. The chat model must support tool calling; the embedding model
-must return 1024-dim vectors (or be an `openai/text-embedding-3-*` model, which is
-shortened to 1024 automatically). Free options that work with a $0-limit key:
-`OPENROUTER_MODEL=nvidia/nemotron-3.5-lightning:free`,
-`OPENROUTER_EMBEDDING_MODEL=liquid/lfm-2.5-embedding-350m:free`.
+Set in `backend/.env` (`GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL`).
+Get a key at https://aistudio.google.com/apikey. The chat model must support tool
+calling; `gemini-embedding-001` is shortened to 1024 dims to match the database.
 Switching embedding models later means re-uploading documents (vectors from different
 models aren't comparable).

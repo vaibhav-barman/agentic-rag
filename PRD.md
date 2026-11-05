@@ -53,13 +53,13 @@ Technically-minded people who want to build production RAG systems using AI codi
 | Frontend | React + TypeScript + Vite + Tailwind + shadcn/ui |
 | Backend | Python + FastAPI |
 | Database | Supabase (Postgres + pgvector + Auth + Storage + Realtime) |
-| LLM (Module 1) | OpenRouter Chat Completions API (threads + memory + file_search tool) |
-| LLM (Module 2+) | OpenRouter, or any endpoint with the same Chat Completions API (Ollama, LM Studio, etc.) |
+| LLM (Module 1) | Google Gemini API, OpenAI-compatible Chat Completions (threads + memory + file_search tool) |
+| LLM (Module 2+) | Gemini, or any endpoint with the same Chat Completions API (Ollama, LM Studio, etc.) |
 | Observability | LangSmith |
 
 ## Constraints
 
-- No LLM frameworks - raw SDK calls to OpenRouter's standard Chat Completions API, Pydantic for structured outputs
+- No LLM frameworks - raw SDK calls to Gemini's OpenAI-compatible Chat Completions API, Pydantic for structured outputs
 - Row-Level Security on all tables - users only see their own data
 - Streaming chat via SSE
 - Ingestion status via Supabase Realtime
@@ -68,17 +68,17 @@ Technically-minded people who want to build production RAG systems using AI codi
 
 ## Module 1: The App Shell + Observability
 
-**Build:** Auth, chat UI, OpenRouter Chat Completions API (threads, memory, file_search), LangSmith tracing
+**Build:** Auth, chat UI, Gemini API (threads, memory, file_search), LangSmith tracing
 
 **Learn:** What RAG is, why managed RAG exists, its limitations (a simple first pass at memory and retrieval)
 
-**Note:** OpenRouter's API is stateless: the app stores threads and sends chat history itself, and file search is a tool backed by the app's own index. Module 2 deepens this with a full ingestion pipeline and pgvector retrieval.
+**Note:** The Gemini Chat Completions API is stateless: the app stores threads and sends chat history itself, and file search is a tool backed by the app's own index. Module 2 deepens this with a full ingestion pipeline and pgvector retrieval.
 
 ---
 
 ## Architectural Decision: Module 1 → Module 2 Transition
 
-At the end of Module 1, you have a working chat app using OpenRouter's API that handles threads, memory, and file search. In Module 2, you rebuild retrieval on your own ingestion pipeline and keep the standard **Chat Completions API**, so any compatible provider works (OpenRouter, Ollama, LM Studio, etc.).
+At the end of Module 1, you have a working chat app using the Gemini API that handles threads, memory, and file search. In Module 2, you rebuild retrieval on your own ingestion pipeline and keep the standard **Chat Completions API**, so any compatible provider works (Gemini, Ollama, LM Studio, etc.).
 
 **The decision you need to make:** What do you do with the Responses API code? Here are two common approaches, but you're not limited to these—come up with your own if it makes sense for your use case.
 
@@ -89,7 +89,7 @@ At the end of Module 1, you have a working chat app using OpenRouter's API that 
 
 There is no right answer—this is a real architectural choice you'll face in building production systems.
 
-**In the video, I chose Option A**—completely removing the Responses API code from the codebase and any related schema from the database. This keeps things simple and focused on the OpenRouter Chat Completions pattern going forward.
+**In the video, I chose Option A**—completely removing the Responses API code from the codebase and any related schema from the database. This keeps things simple and focused on the Gemini Chat Completions pattern going forward.
 
 **This is a lesson in steering Claude Code**: you need to clearly communicate your decision and guide the AI to implement it correctly. Be explicit about what you want removed, refactored, or kept.
 
@@ -99,7 +99,7 @@ There is no right answer—this is a real architectural choice you'll face in bu
 
 **Prerequisites:** Complete the architectural decision above.
 
-**Build:** Ingestion UI, file storage, chunking → embedding → pgvector, retrieval tool, Chat Completions API integration (OpenRouter/Ollama/LM Studio), chat history storage (stateless API - you manage memory now), realtime ingestion status
+**Build:** Ingestion UI, file storage, chunking → embedding → pgvector, retrieval tool, Chat Completions API integration (Gemini/Ollama/LM Studio), chat history storage (stateless API - you manage memory now), realtime ingestion status
 
 **Learn:** Chunking, embeddings, vector search, tool calling, relevance thresholds, managing conversation history, **steering AI agents through architectural refactoring**
 

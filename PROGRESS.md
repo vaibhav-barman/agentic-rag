@@ -18,7 +18,7 @@ Plan: `.agent/plans/1.module-1-app-shell.md`
   - [x] A.3 `get_current_user` JWT dependency (HS256 secret or JWKS for ES256/RS256; project uses ES256) + `GET /me`
   - [x] A.4 Frontend scaffold: Vite React TS, Tailwind v4, shadcn/ui (radix-nova), router, supabase-js, `lib/supabase.ts`, `lib/api.ts`
   - [x] A.5 Login/sign-up, session listener, protected routes, nav, log out, `/me` email in header. Playwright e2e (`npm run test:e2e`) 7/7 pass
-- LLM provider switched to OpenRouter (`OPENROUTER_*` env vars). Phases B/C need replanning: OpenRouter has no `previous_response_id` memory or hosted vector stores / `file_search`
+- LLM provider: Google Gemini API (OpenAI-compatible endpoint). Phases B-D planned in `.agent/plans/2.module-1-chat-file-search.md`
 - [ ] Phase B: Chat with the Responses API
 - [ ] Phase C: Minimal document upload
 - [ ] Phase D: LangSmith tracing

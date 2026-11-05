@@ -1,4 +1,4 @@
--- Module 1 on OpenRouter: the app owns memory and retrieval.
+-- Module 1 with a stateless LLM API: the app owns memory and retrieval.
 -- Additive only. The OpenAI-era leftovers - threads.last_response_id,
 -- documents.openai_file_id and the user_vector_stores table - are no longer used
 -- by the app and stay in place, still protected by RLS.

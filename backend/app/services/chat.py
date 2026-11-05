@@ -99,7 +99,7 @@ async def run_chat_turn(
                 "user_id": repo.user_id,
                 "thread_id": thread_id,
                 "file_search_enabled": file_search_enabled,
-                "model": settings.openrouter_model,
+                "model": settings.gemini_model,
             }
         )
 
