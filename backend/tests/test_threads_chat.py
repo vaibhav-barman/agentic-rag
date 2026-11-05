@@ -174,7 +174,8 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
     repo.update_document(doc["id"], status="completed")
 
     fake = ScriptedLLM(
-        [llm.ToolCall(id="call_1", name="file_search", arguments='{"query": "codename"}')],
+        [llm.ToolCall(id="call_1", name="file_search", arguments='{"query": "codename"}',
+                      extra_content={"google": {"thought_signature": "sig"}})],
         "The codename is BLUE HERON (facts.txt).",
     )
     monkeypatch.setattr(llm, "stream_chat", fake.stream_chat)
@@ -185,6 +186,7 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
     assert fake.calls[0]["tools"] == [chat_service.FILE_SEARCH_TOOL]
     second = fake.calls[1]["messages"]
     assert second[-2]["tool_calls"][0]["function"]["name"] == "file_search"
+    assert second[-2]["tool_calls"][0]["extra_content"] == {"google": {"thought_signature": "sig"}}
     assert second[-1]["role"] == "tool" and second[-1]["tool_call_id"] == "call_1"
     assert "BLUE HERON" in second[-1]["content"] and "facts.txt" in second[-1]["content"]
 
@@ -217,3 +219,39 @@ def test_trace_inputs_exclude_repo_and_token():
 
     out = _trace_inputs({"repo": object(), "thread": {"id": "t1", "title": None}, "user_content": "hi"})
     assert out == {"thread_id": "t1", "user_content": "hi"}
+
+
+def test_stream_chat_handles_tool_calls_without_index(monkeypatch):
+    """Gemini streams tool calls with index=None; must parse (and not crash tracing)."""
+    import asyncio
+    from types import SimpleNamespace as NS
+
+    chunks = [
+        NS(usage=None, choices=[NS(delta=NS(content=None, tool_calls=[
+            NS(index=None, id="call_9", function=NS(name="file_search", arguments='{"query":"x"}'),
+               model_extra={"extra_content": {"google": {"thought_signature": "sig"}}})]))]),
+        NS(usage=NS(prompt_tokens=5, completion_tokens=3, total_tokens=8), choices=[]),
+    ]
+
+    async def fake_stream():
+        for c in chunks:
+            yield c
+
+    class FakeCompletions:
+        async def create(self, **kwargs):
+            return fake_stream()
+
+    fake_client = NS(chat=NS(completions=FakeCompletions()))
+    monkeypatch.setattr(llm, "get_client", lambda: fake_client)
+
+    async def collect():
+        return [e async for e in llm.stream_chat([{"role": "user", "content": "q"}], [{}])]
+
+    events = asyncio.run(collect())
+    [calls] = [e for e in events if e.type == "tool_calls"]
+    assert [(c.id, c.name, c.arguments) for c in calls.tool_calls] == [("call_9", "file_search", '{"query":"x"}')]
+    assert calls.tool_calls[0].extra_content == {"google": {"thought_signature": "sig"}}
+    assert events[-1].usage == {"input_tokens": 5, "output_tokens": 3, "total_tokens": 8}
+    out = llm._reduce_stream(events)
+    assert out["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "file_search"
+    assert out["usage_metadata"]["total_tokens"] == 8

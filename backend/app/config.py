@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Google Gemini API via its OpenAI-compatible endpoint (OpenAI SDK + base_url)
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-flash-lite-latest"
     gemini_embedding_model: str = "gemini-embedding-001"
     # Must match document_chunks.embedding (vector(1024)) in migration 0003.
     embedding_dimensions: int = 1024

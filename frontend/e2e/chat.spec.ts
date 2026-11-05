@@ -39,18 +39,18 @@ async function ask(page: Page, text: string) {
 test('B.5: streams, remembers, persists across reload, separates threads', async ({ page }) => {
   await logIn(page)
 
-  // Streaming: watch the assistant text grow across SSE deltas.
+  // Streaming: the server sends the answer as several SSE delta events.
+  const chatResponse = page.waitForResponse((r) => /\/threads\/[^/]+\/chat$/.test(r.url()))
   await page.getByLabel('Message').fill('Count from 1 to 30 separated by commas.')
   await page.getByLabel('Message').press('Enter')
+  const response = await chatResponse
+  expect(response.headers()['content-type']).toContain('text/event-stream')
+  const sseBody = await response.text()
+  expect(sseBody.match(/^event: delta$/gm)?.length ?? 0).toBeGreaterThan(1)
+  expect(sseBody).toContain('event: done')
   const first = page.getByTestId('message-assistant').first()
-  await expect(first).toContainText(/\d/, { timeout: 120_000 })
-  const lengths = new Set<number>()
-  while (await page.getByRole('button', { name: 'Stop' }).isVisible()) {
-    lengths.add(((await first.textContent()) ?? '').length)
-    await page.waitForTimeout(50)
-  }
-  expect(lengths.size).toBeGreaterThan(1)
-  await expect(first).toContainText('30')
+  await expect(first).toContainText('30', { timeout: 120_000 })
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeHidden({ timeout: 120_000 })
 
   // Memory within the thread.
   await ask(page, 'My name is Ada Lovelace. Just reply "Noted."')

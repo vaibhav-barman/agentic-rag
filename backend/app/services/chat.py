@@ -129,6 +129,8 @@ async def run_chat_turn(
                             "id": c.id,
                             "type": "function",
                             "function": {"name": c.name, "arguments": c.arguments or "{}"},
+                            # Gemini rejects the follow-up unless its thought_signature is echoed.
+                            **({"extra_content": c.extra_content} if c.extra_content else {}),
                         }
                         for c in tool_calls
                     ],
