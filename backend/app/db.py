@@ -4,7 +4,7 @@ Routers depend on `get_repo`, which tests override with an in-memory fake.
 """
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import Depends
 from supabase import Client, ClientOptions, create_client
@@ -28,6 +28,11 @@ def user_client(user: CurrentUser) -> Client:
     )
 
 
+def _rows(response: Any) -> list[dict]:
+    """Typed view of a PostgREST response's `.data` (supabase-py types it as JSON)."""
+    return cast("list[dict]", response.data)
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -40,19 +45,18 @@ class Repo:
     # --- threads -----------------------------------------------------------
     def create_thread(self, title: str | None = None) -> dict:
         row = {"user_id": self.user_id, "title": title}
-        return self.db.table("threads").insert(row).execute().data[0]
+        return _rows(self.db.table("threads").insert(row).execute())[0]
 
     def list_threads(self) -> list[dict]:
-        return (
+        return _rows(
             self.db.table("threads")
             .select("id,title,created_at,updated_at")
             .order("updated_at", desc=True)
             .execute()
-            .data
         )
 
     def get_thread(self, thread_id: str) -> dict | None:
-        rows = self.db.table("threads").select("*").eq("id", thread_id).limit(1).execute().data
+        rows = _rows(self.db.table("threads").select("*").eq("id", thread_id).limit(1).execute())
         return rows[0] if rows else None
 
     def update_thread(self, thread_id: str, **fields: Any) -> None:
@@ -73,7 +77,7 @@ class Repo:
         )
         if limit is not None:
             query = query.limit(limit)
-        rows = query.execute().data
+        rows = _rows(query.execute())
         return list(reversed(rows)) if limit is not None else rows
 
     def add_message(
@@ -86,25 +90,22 @@ class Repo:
             "content": content,
             "sources": sources,
         }
-        return self.db.table("messages").insert(row).execute().data[0]
+        return _rows(self.db.table("messages").insert(row).execute())[0]
 
     # --- documents ---------------------------------------------------------
     def create_document(self, filename: str) -> dict:
         row = {"user_id": self.user_id, "filename": filename, "status": "processing"}
-        return self.db.table("documents").insert(row).execute().data[0]
+        return _rows(self.db.table("documents").insert(row).execute())[0]
 
     def update_document(self, document_id: str, **fields: Any) -> dict:
-        return (
-            self.db.table("documents").update(fields).eq("id", document_id).execute().data[0]
-        )
+        return _rows(self.db.table("documents").update(fields).eq("id", document_id).execute())[0]
 
     def list_documents(self) -> list[dict]:
-        return (
+        return _rows(
             self.db.table("documents")
             .select("id,filename,status,error,chunk_count,created_at")
             .order("created_at", desc=True)
             .execute()
-            .data
         )
 
     def delete_document(self, document_id: str) -> bool:
@@ -132,12 +133,10 @@ class Repo:
             self.db.table("document_chunks").insert(rows[start : start + 100]).execute()
 
     def match_chunks(self, embedding: list[float], top_k: int) -> list[dict]:
-        return (
+        return _rows(
             self.db.rpc(
                 "match_document_chunks", {"query_embedding": embedding, "match_count": top_k}
-            )
-            .execute()
-            .data
+            ).execute()
         )
 
 

@@ -21,9 +21,15 @@ USER_B = str(uuid.uuid4())
 def token_for(user_id: str) -> str:
     now = int(time.time())
     return jwt.encode(
-        {"sub": user_id, "email": f"{user_id[:4]}@x.com", "aud": "authenticated",
-         "iat": now, "exp": now + 3600},
-        settings.supabase_jwt_secret, algorithm="HS256",
+        {
+            "sub": user_id,
+            "email": f"{user_id[:4]}@x.com",
+            "aud": "authenticated",
+            "iat": now,
+            "exp": now + 3600,
+        },
+        settings.supabase_jwt_secret,
+        algorithm="HS256",
     )
 
 
@@ -58,6 +64,7 @@ def parse_sse(body: str) -> list[tuple[str, dict]]:
 
 # --- B.3 thread endpoints -------------------------------------------------
 
+
 def test_threads_require_auth(client):
     assert client.get("/threads").status_code == 401
 
@@ -83,11 +90,14 @@ def test_other_users_thread_is_404(client):
     assert client.get("/threads", headers=h(USER_B)).json() == []
     assert client.get(f"/threads/{tid}/messages", headers=h(USER_B)).status_code == 404
     assert client.delete(f"/threads/{tid}", headers=h(USER_B)).status_code == 404
-    assert client.post(f"/threads/{tid}/chat", headers=h(USER_B),
-                       json={"content": "hi"}).status_code == 404
+    assert (
+        client.post(f"/threads/{tid}/chat", headers=h(USER_B), json={"content": "hi"}).status_code
+        == 404
+    )
 
 
 # --- B.4 chat endpoint ----------------------------------------------------
+
 
 def test_chat_streams_deltas_then_done_and_persists(client, monkeypatch):
     fake = ScriptedLLM("Hello there friend")
@@ -106,7 +116,9 @@ def test_chat_streams_deltas_then_done_and_persists(client, monkeypatch):
 
     msgs = client.get(f"/threads/{tid}/messages", headers=h(USER_A)).json()
     assert [(m["role"], m["content"]) for m in msgs] == [
-        ("user", "Hi, I am Ada"), ("assistant", "Hello there friend")]
+        ("user", "Hi, I am Ada"),
+        ("assistant", "Hello there friend"),
+    ]
     assert client.get("/threads", headers=h(USER_A)).json()[0]["title"] == "Hi, I am Ada"
 
 
@@ -150,8 +162,9 @@ def test_llm_failure_emits_error_event(client, monkeypatch):
     fake = ScriptedLLM(RuntimeError("rate limited"))
     monkeypatch.setattr(llm, "stream_chat", fake.stream_chat)
     tid = client.post("/threads", headers=h(USER_A), json={}).json()["id"]
-    events = parse_sse(client.post(f"/threads/{tid}/chat", headers=h(USER_A),
-                                   json={"content": "hi"}).text)
+    events = parse_sse(
+        client.post(f"/threads/{tid}/chat", headers=h(USER_A), json={"content": "hi"}).text
+    )
     assert ("error" in [e for e, _ in events]) and "rate limited" in events[-1][1]["message"]
     # Only the user message is stored.
     msgs = client.get(f"/threads/{tid}/messages", headers=h(USER_A)).json()
@@ -160,11 +173,14 @@ def test_llm_failure_emits_error_event(client, monkeypatch):
 
 def test_empty_message_rejected(client):
     tid = client.post("/threads", headers=h(USER_A), json={}).json()["id"]
-    assert client.post(f"/threads/{tid}/chat", headers=h(USER_A),
-                       json={"content": ""}).status_code == 422
+    assert (
+        client.post(f"/threads/{tid}/chat", headers=h(USER_A), json={"content": ""}).status_code
+        == 422
+    )
 
 
 # --- C.3 file_search tool -------------------------------------------------
+
 
 def test_file_search_tool_round_trip(client, store, monkeypatch):
     monkeypatch.setattr(llm, "embed", fake_embed)
@@ -174,14 +190,23 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
     repo.update_document(doc["id"], status="completed")
 
     fake = ScriptedLLM(
-        [llm.ToolCall(id="call_1", name="file_search", arguments='{"query": "codename"}',
-                      extra_content={"google": {"thought_signature": "sig"}})],
+        [
+            llm.ToolCall(
+                id="call_1",
+                name="file_search",
+                arguments='{"query": "codename"}',
+                extra_content={"google": {"thought_signature": "sig"}},
+            )
+        ],
         "The codename is BLUE HERON (facts.txt).",
     )
     monkeypatch.setattr(llm, "stream_chat", fake.stream_chat)
     tid = client.post("/threads", headers=h(USER_A), json={}).json()["id"]
-    events = parse_sse(client.post(f"/threads/{tid}/chat", headers=h(USER_A),
-                                   json={"content": "What is the codename?"}).text)
+    events = parse_sse(
+        client.post(
+            f"/threads/{tid}/chat", headers=h(USER_A), json={"content": "What is the codename?"}
+        ).text
+    )
 
     assert fake.calls[0]["tools"] == [chat_service.FILE_SEARCH_TOOL]
     second = fake.calls[1]["messages"]
@@ -208,8 +233,9 @@ def test_tool_rounds_are_capped(client, store, monkeypatch):
     fake = ScriptedLLM(call, "final answer")
     monkeypatch.setattr(llm, "stream_chat", fake.stream_chat)
     tid = client.post("/threads", headers=h(USER_A), json={}).json()["id"]
-    events = parse_sse(client.post(f"/threads/{tid}/chat", headers=h(USER_A),
-                                   json={"content": "q"}).text)
+    events = parse_sse(
+        client.post(f"/threads/{tid}/chat", headers=h(USER_A), json={"content": "q"}).text
+    )
     assert fake.calls[1]["tools"] is None  # last round must answer
     assert events[-1][0] == "done"
 
@@ -217,7 +243,9 @@ def test_tool_rounds_are_capped(client, store, monkeypatch):
 def test_trace_inputs_exclude_repo_and_token():
     from app.services.chat import _trace_inputs
 
-    out = _trace_inputs({"repo": object(), "thread": {"id": "t1", "title": None}, "user_content": "hi"})
+    out = _trace_inputs(
+        {"repo": object(), "thread": {"id": "t1", "title": None}, "user_content": "hi"}
+    )
     assert out == {"thread_id": "t1", "user_content": "hi"}
 
 
@@ -227,9 +255,26 @@ def test_stream_chat_handles_tool_calls_without_index(monkeypatch):
     from types import SimpleNamespace as NS
 
     chunks = [
-        NS(usage=None, choices=[NS(delta=NS(content=None, tool_calls=[
-            NS(index=None, id="call_9", function=NS(name="file_search", arguments='{"query":"x"}'),
-               model_extra={"extra_content": {"google": {"thought_signature": "sig"}}})]))]),
+        NS(
+            usage=None,
+            choices=[
+                NS(
+                    delta=NS(
+                        content=None,
+                        tool_calls=[
+                            NS(
+                                index=None,
+                                id="call_9",
+                                function=NS(name="file_search", arguments='{"query":"x"}'),
+                                model_extra={
+                                    "extra_content": {"google": {"thought_signature": "sig"}}
+                                },
+                            )
+                        ],
+                    )
+                )
+            ],
+        ),
         NS(usage=NS(prompt_tokens=5, completion_tokens=3, total_tokens=8), choices=[]),
     ]
 
@@ -249,7 +294,9 @@ def test_stream_chat_handles_tool_calls_without_index(monkeypatch):
 
     events = asyncio.run(collect())
     [calls] = [e for e in events if e.type == "tool_calls"]
-    assert [(c.id, c.name, c.arguments) for c in calls.tool_calls] == [("call_9", "file_search", '{"query":"x"}')]
+    assert [(c.id, c.name, c.arguments) for c in calls.tool_calls] == [
+        ("call_9", "file_search", '{"query":"x"}')
+    ]
     assert calls.tool_calls[0].extra_content == {"google": {"thought_signature": "sig"}}
     assert events[-1].usage == {"input_tokens": 5, "output_tokens": 3, "total_tokens": 8}
     out = llm._reduce_stream(events)

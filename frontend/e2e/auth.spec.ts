@@ -53,10 +53,10 @@ test('log in, /me email, nav, reload persistence, log out', async ({ page }) => 
   expect(await me.json()).toMatchObject({ id: user.id, email: user.email })
   await expect(page.getByTestId('me-email')).toHaveText(user.email)
 
-  // Nav to Ingestion and back.
-  await page.getByRole('link', { name: 'Ingestion' }).click()
+  // Nav to Documents and back.
+  await page.getByRole('link', { name: 'Documents' }).click()
   await expect(page).toHaveURL(/\/ingestion$/)
-  await expect(page.getByRole('heading', { name: 'Ingestion' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Documents', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Chat' }).click()
   await expect(page).toHaveURL(/\/$/)
 

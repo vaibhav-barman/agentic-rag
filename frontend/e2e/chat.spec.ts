@@ -86,8 +86,8 @@ test('B.5: streams, remembers, persists across reload, separates threads', async
 test('C.3/C.4: upload, grounded answer with source, delete, fact gone', async ({ page }) => {
   await logIn(page)
 
-  // Upload via the Ingestion page.
-  await page.getByRole('link', { name: 'Ingestion' }).click()
+  // Upload via the Documents page.
+  await page.getByRole('link', { name: 'Documents' }).click()
   await page.getByTestId('file-input').setInputFiles({
     name: 'project-notes.txt',
     mimeType: 'text/plain',
@@ -115,7 +115,7 @@ test('C.3/C.4: upload, grounded answer with source, delete, fact gone', async ({
   )
 
   // Delete the document.
-  await page.getByRole('link', { name: 'Ingestion' }).click()
+  await page.getByRole('link', { name: 'Documents' }).click()
   await page.getByRole('button', { name: 'Delete project-notes.txt' }).click()
   await expect(page.getByTestId('document-row')).toHaveCount(0)
   await expect(page.getByText('No documents yet.')).toBeVisible()
@@ -130,7 +130,7 @@ test('C.3/C.4: upload, grounded answer with source, delete, fact gone', async ({
 
 test('C.4: unsupported file type shows an error', async ({ page }) => {
   await logIn(page)
-  await page.getByRole('link', { name: 'Ingestion' }).click()
+  await page.getByRole('link', { name: 'Documents' }).click()
   await page.getByTestId('file-input').setInputFiles({
     name: 'image.png',
     mimeType: 'image/png',

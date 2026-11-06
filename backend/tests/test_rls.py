@@ -97,9 +97,11 @@ def test_inserts_with_foreign_user_id_are_rejected(users):
     # B can't write a message into A's thread, even with B's own user_id.
     thread = a.table("threads").insert({"user_id": a_id, "title": "A"}).execute().data[0]
     assert _rejected(
-        lambda: b.table("messages")
-        .insert({"thread_id": thread["id"], "user_id": b_id, "role": "user", "content": "x"})
-        .execute()
+        lambda: (
+            b.table("messages")
+            .insert({"thread_id": thread["id"], "user_id": b_id, "role": "user", "content": "x"})
+            .execute()
+        )
     )
 
 
@@ -123,29 +125,55 @@ def _vec(hot: int) -> list[float]:
 def test_chunks_and_match_function_are_isolated(users):
     (a_id, a), (b_id, b) = users
 
-    doc = a.table("documents").insert(
-        {"user_id": a_id, "filename": "a-secret.txt", "status": "completed"}
-    ).execute().data[0]
+    doc = (
+        a.table("documents")
+        .insert({"user_id": a_id, "filename": "a-secret.txt", "status": "completed"})
+        .execute()
+        .data[0]
+    )
     a.table("document_chunks").insert(
-        {"document_id": doc["id"], "user_id": a_id, "chunk_index": 0,
-         "content": "A's secret fact", "embedding": _vec(0)}
+        {
+            "document_id": doc["id"],
+            "user_id": a_id,
+            "chunk_index": 0,
+            "content": "A's secret fact",
+            "embedding": _vec(0),
+        }
     ).execute()
 
     # A finds its own chunk through the RPC.
-    hits = a.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5}).execute().data
+    hits = (
+        a.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5})
+        .execute()
+        .data
+    )
     assert [h["content"] for h in hits] == ["A's secret fact"]
     assert hits[0]["filename"] == "a-secret.txt" and hits[0]["similarity"] > 0.99
 
     # B sees nothing, directly or through the RPC.
     assert b.table("document_chunks").select("*").execute().data == []
-    assert b.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5}).execute().data == []
+    assert (
+        b.rpc("match_document_chunks", {"query_embedding": _vec(0), "match_count": 5})
+        .execute()
+        .data
+        == []
+    )
 
     # B can't attach chunks to A's document.
     assert _rejected(
-        lambda: b.table("document_chunks").insert(
-            {"document_id": doc["id"], "user_id": b_id, "chunk_index": 1,
-             "content": "x", "embedding": _vec(1)}
-        ).execute()
+        lambda: (
+            b.table("document_chunks")
+            .insert(
+                {
+                    "document_id": doc["id"],
+                    "user_id": b_id,
+                    "chunk_index": 1,
+                    "content": "x",
+                    "embedding": _vec(1),
+                }
+            )
+            .execute()
+        )
     )
 
     # Deleting the document cascades to its chunks.

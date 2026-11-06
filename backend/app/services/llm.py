@@ -8,7 +8,7 @@ calls, which arrive without an `index`.
 
 import json
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -71,7 +71,7 @@ def _tag_llm_run() -> None:
         run.metadata.update({"ls_provider": "google", "ls_model_name": get_settings().gemini_model})
 
 
-def _reduce_stream(events: list[StreamEvent]) -> dict:
+def _reduce_stream(events: Sequence[StreamEvent]) -> dict:
     """What the LangSmith llm run shows as output: the full message + token usage."""
     text = "".join(e.text for e in events if e.type == "delta")
     calls = [c for e in events if e.type == "tool_calls" for c in e.tool_calls]
