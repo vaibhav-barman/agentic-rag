@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
+import { Wordmark } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { getMe, type Me } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -8,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/', label: 'Chat', end: true },
-  { to: '/ingestion', label: 'Ingestion', end: false },
+  { to: '/ingestion', label: 'Documents', end: false },
 ]
 
 export function AppLayout() {
@@ -43,9 +44,9 @@ export function AppLayout() {
 
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-6 border-b px-4">
-        <span className="font-heading text-sm font-semibold">Agentic RAG</span>
-        <nav className="flex items-center gap-1">
+      <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card/60 px-4 sm:gap-8 sm:px-5">
+        <Wordmark />
+        <nav className="flex h-full items-stretch gap-1" aria-label="Main">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -53,10 +54,11 @@ export function AppLayout() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'rounded-md px-3 py-1.5 text-sm transition-colors',
+                  'relative flex items-center px-2.5 text-sm transition-colors outline-none focus-visible:text-foreground focus-visible:underline',
+                  'after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors',
                   isActive
-                    ? 'bg-secondary text-secondary-foreground font-medium'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'font-medium text-foreground after:bg-primary'
+                    : 'text-muted-foreground after:bg-transparent hover:text-foreground',
                 )
               }
             >
@@ -64,15 +66,18 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex min-w-0 items-center gap-3">
           <span
-            className={cn('text-xs', meError ? 'text-destructive' : 'text-muted-foreground')}
+            className={cn(
+              'hidden max-w-56 truncate text-sm sm:block',
+              meError ? 'text-destructive' : 'text-muted-foreground',
+            )}
             data-testid="me-email"
             title={meError ? `GET /me failed: ${meError}` : 'Verified by backend GET /me'}
           >
             {meError ? 'API error' : (me?.email ?? '…')}
           </span>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
+          <Button variant="ghost" size="sm" onClick={handleSignOut}>
             Log out
           </Button>
         </div>

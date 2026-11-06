@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth'
 
 export function FullPageSpinner() {
   return (
-    <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+    <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground" role="status">
       Loading…
     </div>
   )

@@ -28,26 +28,43 @@ export function ChatInput({ onSend, onStop, streaming }: Props) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-      <div className="relative rounded-2xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring/30">
-        <Textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Message… (Shift+Enter for a new line)"
-          aria-label="Message"
-          rows={1}
-          className="max-h-48 min-h-12 resize-none border-0 bg-transparent py-3 pr-14 shadow-none focus-visible:ring-0"
-        />
-        {streaming ? (
-          <Button size="icon" variant="outline" className="absolute right-2 bottom-2 size-8 rounded-full" onClick={onStop} aria-label="Stop">
-            <SquareIcon className="size-3.5" />
-          </Button>
-        ) : (
-          <Button size="icon" className="absolute right-2 bottom-2 size-8 rounded-full" onClick={send} disabled={!value.trim()} aria-label="Send">
-            <ArrowUpIcon className="size-4" />
-          </Button>
-        )}
+    <div className="mx-auto w-full max-w-[64rem] px-5 pb-4">
+      <div className="lg:max-w-[44rem]">
+        <div className="relative rounded-2xl border border-input bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20">
+          <Textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Ask about your documents, or anything else"
+            aria-label="Message"
+            rows={1}
+            className="max-h-48 min-h-[3.25rem] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+          />
+          {streaming ? (
+            <Button
+              size="icon"
+              variant="outline"
+              className="absolute right-2.5 bottom-2.5 size-9 rounded-full"
+              onClick={onStop}
+              aria-label="Stop"
+            >
+              <SquareIcon className="size-3.5 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="absolute right-2.5 bottom-2.5 size-9 rounded-full"
+              onClick={send}
+              disabled={!value.trim()}
+              aria-label="Send"
+            >
+              <ArrowUpIcon className="size-4" />
+            </Button>
+          )}
+        </div>
+        <p className="mt-2 hidden px-1 text-xs text-muted-foreground sm:block">
+          Press Enter to send, Shift+Enter for a new line.
+        </p>
       </div>
     </div>
   )

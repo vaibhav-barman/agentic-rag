@@ -1,10 +1,9 @@
-import { FileTextIcon } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+import { SourceNote } from '@/components/chat/SourceNote'
 import type { Source } from '@/lib/api'
-import { cn } from '@/lib/utils'
 
 export type UiMessage = {
   id: string
@@ -15,23 +14,17 @@ export type UiMessage = {
   error?: string
 }
 
+/** Cited files sit in the right margin on wide screens and under the answer on narrow ones. */
 function Sources({ sources }: { sources: Source[] }) {
-  // One chip per file, tooltip shows the matched excerpt.
+  // One note per file; the best-matching excerpt comes first.
   const byFile = new Map<string, Source>()
   for (const s of sources) if (!byFile.has(s.filename)) byFile.set(s.filename, s)
   return (
-    <div className="mt-2 flex flex-wrap gap-1.5" data-testid="sources">
+    <aside className="flex flex-col gap-4 lg:pt-1.5" data-testid="sources" aria-label="Sources">
       {[...byFile.values()].map((s) => (
-        <span
-          key={s.filename}
-          title={s.content}
-          className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground"
-        >
-          <FileTextIcon className="size-3" />
-          {s.filename}
-        </span>
+        <SourceNote key={s.filename} filename={s.filename} excerpt={s.content} />
       ))}
-    </div>
+    </aside>
   )
 }
 
@@ -43,47 +36,42 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   }, [messages.length, last?.content])
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          data-testid={`message-${m.role}`}
-          className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
-        >
-          <div
-            className={cn(
-              'max-w-[85%] text-sm leading-relaxed',
-              m.role === 'user'
-                ? 'rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 whitespace-pre-wrap text-primary-foreground'
-                : 'w-full',
-            )}
-          >
-            {m.role === 'assistant' ? (
-              <>
-                {m.content ? (
-                  <div className="prose-chat">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                  </div>
-                ) : m.pending ? (
-                  <span className="inline-flex gap-1 py-2" aria-label="Thinking">
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                  </span>
-                ) : null}
-                {m.sources && m.sources.length > 0 && <Sources sources={m.sources} />}
-                {m.error && (
-                  <p className="mt-2 text-xs text-destructive" role="alert">
-                    {m.error}
-                  </p>
-                )}
-              </>
-            ) : (
-              m.content
-            )}
+    <div className="mx-auto flex w-full max-w-[64rem] flex-col gap-9 px-5 py-8">
+      {messages.map((m) =>
+        m.role === 'user' ? (
+          <div key={m.id} data-testid="message-user" className="lg:max-w-[44rem]">
+            <p className="w-fit max-w-[90%] rounded-2xl bg-secondary px-4 py-2.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap">
+              {m.content}
+            </p>
           </div>
-        </div>
-      ))}
+        ) : (
+          <div
+            key={m.id}
+            data-testid="message-assistant"
+            className="grid gap-x-10 gap-y-4 lg:grid-cols-[minmax(0,44rem)_15rem]"
+          >
+            <div className="min-w-0">
+              {m.content ? (
+                <div className="prose-chat">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                </div>
+              ) : m.pending ? (
+                <span className="inline-flex gap-1.5 py-3" role="status" aria-label="Thinking">
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary/70 [animation-delay:-0.3s] motion-reduce:animate-none" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary/70 [animation-delay:-0.15s] motion-reduce:animate-none" />
+                  <span className="size-1.5 animate-bounce rounded-full bg-primary/70 motion-reduce:animate-none" />
+                </span>
+              ) : null}
+              {m.error && (
+                <p className="mt-3 text-sm text-destructive" role="alert">
+                  {m.error}
+                </p>
+              )}
+            </div>
+            {m.sources && m.sources.length > 0 && <Sources sources={m.sources} />}
+          </div>
+        ),
+      )}
       <div ref={bottomRef} />
     </div>
   )

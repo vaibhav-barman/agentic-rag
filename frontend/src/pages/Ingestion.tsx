@@ -11,10 +11,21 @@ const MAX_MB = 10
 
 type Uploading = { key: string; filename: string }
 
-function StatusBadge({ status }: { status: DocumentRow['status'] }) {
-  const variant = status === 'failed' ? 'destructive' : status === 'completed' ? 'secondary' : 'outline'
+function FileIcon({ children }: { children: React.ReactNode }) {
   return (
-    <Badge variant={variant} data-testid="doc-status">
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+      {children}
+    </span>
+  )
+}
+
+function StatusBadge({ status }: { status: DocumentRow['status'] }) {
+  return (
+    <Badge
+      variant={status === 'failed' ? 'destructive' : 'outline'}
+      className={cn(status === 'completed' && 'border-primary/30 bg-primary/10 text-primary')}
+      data-testid="doc-status"
+    >
       {status}
     </Badge>
   )
@@ -83,11 +94,11 @@ export default function Ingestion() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 py-10">
         <div>
-          <h1 className="font-heading text-xl font-semibold">Ingestion</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload documents to search them from Chat. Text, Markdown and PDF up to {MAX_MB} MB.
+          <h1 className="text-3xl font-medium">Documents</h1>
+          <p className="mt-2 max-w-prose text-base leading-relaxed text-muted-foreground">
+            Add files and Glossa will search them when you ask a question. Text, Markdown and PDF, up to {MAX_MB} MB each.
           </p>
         </div>
 
@@ -95,6 +106,7 @@ export default function Ingestion() {
           role="button"
           tabIndex={0}
           data-testid="dropzone"
+          aria-label="Add files"
           onClick={() => inputRef.current?.click()}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
           onDragOver={(e) => {
@@ -104,13 +116,15 @@ export default function Ingestion() {
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           className={cn(
-            'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors',
-            dragging ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40',
+            'flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-14 text-center transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/30',
+            dragging ? 'border-primary bg-primary/5' : 'border-input bg-card hover:border-primary/60',
           )}
         >
-          <UploadIcon className="size-6 text-muted-foreground" />
-          <p className="text-sm font-medium">Drop files here or click to browse</p>
-          <p className="text-xs text-muted-foreground">{ACCEPT.replaceAll(',', ', ')}</p>
+          <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <UploadIcon className="size-5" />
+          </span>
+          <p className="text-base font-medium">Drop files here or click to browse</p>
+          <p className="text-sm text-muted-foreground">{ACCEPT.replaceAll(',', ', ')}</p>
           <input
             ref={inputRef}
             type="file"
@@ -131,38 +145,45 @@ export default function Ingestion() {
           </p>
         )}
 
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Documents</h2>
-          <ul className="divide-y rounded-xl border" data-testid="document-list">
-            {uploading.map((u) => (
-              <li key={u.key} className="flex items-center gap-3 px-4 py-3 text-sm">
-                <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-                <span className="flex-1 truncate">{u.filename}</span>
-                <Badge variant="outline">processing</Badge>
-              </li>
-            ))}
-            {docs.map((d) => (
-              <li key={d.id} className="flex items-center gap-3 px-4 py-3 text-sm" data-testid="document-row">
-                <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{d.filename}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {new Date(d.created_at).toLocaleString()}
-                    {d.status === 'completed' && ` · ${d.chunk_count} chunk${d.chunk_count === 1 ? '' : 's'}`}
-                    {d.status === 'failed' && d.error && ` · ${d.error}`}
-                  </p>
-                </div>
-                <StatusBadge status={d.status} />
-                <Button variant="ghost" size="icon" aria-label={`Delete ${d.filename}`} onClick={() => remove(d.id)}>
-                  <Trash2Icon className="size-4" />
-                </Button>
-              </li>
-            ))}
-            {docs.length === 0 && uploading.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">No documents yet.</li>
-            )}
-          </ul>
-        </section>
+        <ul className="divide-y border-y" data-testid="document-list" aria-label="Your files">
+          {uploading.map((u) => (
+            <li key={u.key} className="flex items-center gap-4 py-4 text-sm">
+              <FileIcon>
+                <Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />
+              </FileIcon>
+              <span className="flex-1 truncate text-base">{u.filename}</span>
+              <Badge variant="outline">processing</Badge>
+            </li>
+          ))}
+          {docs.map((d) => (
+            <li key={d.id} className="flex items-center gap-4 py-4 text-sm" data-testid="document-row">
+              <FileIcon>
+                <FileTextIcon className="size-4" />
+              </FileIcon>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-medium">{d.filename}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {new Date(d.created_at).toLocaleString()}
+                  {d.status === 'completed' && `, ${d.chunk_count} passage${d.chunk_count === 1 ? '' : 's'}`}
+                  {d.status === 'failed' && d.error && `, ${d.error}`}
+                </p>
+              </div>
+              <StatusBadge status={d.status} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive"
+                aria-label={`Delete ${d.filename}`}
+                onClick={() => remove(d.id)}
+              >
+                <Trash2Icon className="size-4" />
+              </Button>
+            </li>
+          ))}
+          {docs.length === 0 && uploading.length === 0 && (
+            <li className="py-8 text-center text-sm text-muted-foreground">No documents yet.</li>
+          )}
+        </ul>
       </div>
     </div>
   )
