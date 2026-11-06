@@ -8,7 +8,7 @@ from app.services.llm import configure_langsmith_env
 settings = get_settings()
 configure_langsmith_env()
 
-app = FastAPI(title="Agentic RAG API")
+app = FastAPI(title="Glossa API")
 
 app.add_middleware(
     CORSMiddleware,

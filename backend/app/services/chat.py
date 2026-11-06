@@ -78,9 +78,7 @@ def _trace_inputs(inputs: dict) -> dict:
 
 
 @traceable(name="chat_turn", run_type="chain", process_inputs=_trace_inputs)
-async def run_chat_turn(
-    repo, thread: dict, user_content: str
-) -> AsyncIterator[tuple[str, dict]]:
+async def run_chat_turn(repo, thread: dict, user_content: str) -> AsyncIterator[tuple[str, dict]]:
     settings = get_settings()
     thread_id = thread["id"]
 

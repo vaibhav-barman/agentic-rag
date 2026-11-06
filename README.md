@@ -1,4 +1,4 @@
-# Agentic RAG
+# Glossa
 
 RAG app with a threaded chat (default view) and a document ingestion page.
 Stack: React + Vite + Tailwind + shadcn/ui, FastAPI, Supabase, Google Gemini API, LangSmith.
@@ -38,6 +38,24 @@ npm install
 cp .env.example .env        # fill in values
 npm run dev                 # http://localhost:5173
 ```
+
+### 4. Run everything with one command
+After filling in both `.env` files:
+```bash
+./start.sh          # backend on :8000 + frontend on :5173, Ctrl+C stops both
+./start.sh --setup  # same, but (re)installs backend + frontend dependencies first
+```
+It creates the backend venv and runs `npm install` automatically if they're missing,
+and refuses to start if a `.env` is missing or a port is busy. Override ports with
+`BACKEND_PORT=8100 FRONTEND_PORT=5200 ./start.sh`.
+
+## Lint / type check
+Config lives in the root `pyproject.toml` (ruff + pyright, both aware of `backend/venv`).
+```bash
+ruff check . && ruff format --check .
+```
+In VS Code, select the interpreter `backend/venv/bin/python` (Python: Select Interpreter)
+if Pylance still reports unresolved imports.
 
 ## Tests
 ```bash

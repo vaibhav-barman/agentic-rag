@@ -36,8 +36,13 @@ class FakeRepo:
     # threads
     def create_thread(self, title=None):
         now = _ts()
-        row = {"id": str(uuid.uuid4()), "user_id": self.user_id, "title": title,
-               "created_at": now, "updated_at": now}
+        row = {
+            "id": str(uuid.uuid4()),
+            "user_id": self.user_id,
+            "title": title,
+            "created_at": now,
+            "updated_at": now,
+        }
         self.store.threads.append(row)
         return row
 
@@ -68,15 +73,29 @@ class FakeRepo:
         return rows[-limit:] if limit is not None else rows
 
     def add_message(self, thread_id, role, content, sources=None):
-        row = {"id": str(uuid.uuid4()), "thread_id": thread_id, "user_id": self.user_id,
-               "role": role, "content": content, "sources": sources, "created_at": _ts()}
+        row = {
+            "id": str(uuid.uuid4()),
+            "thread_id": thread_id,
+            "user_id": self.user_id,
+            "role": role,
+            "content": content,
+            "sources": sources,
+            "created_at": _ts(),
+        }
         self.store.messages.append(row)
         return row
 
     # documents
     def create_document(self, filename):
-        row = {"id": str(uuid.uuid4()), "user_id": self.user_id, "filename": filename,
-               "status": "processing", "error": None, "chunk_count": 0, "created_at": _ts()}
+        row = {
+            "id": str(uuid.uuid4()),
+            "user_id": self.user_id,
+            "filename": filename,
+            "status": "processing",
+            "error": None,
+            "chunk_count": 0,
+            "created_at": _ts(),
+        }
         self.store.documents.append(row)
         return row
 
@@ -102,16 +121,31 @@ class FakeRepo:
     # chunks
     def insert_chunks(self, document_id, chunks, embeddings):
         for i, (content, emb) in enumerate(zip(chunks, embeddings, strict=True)):
-            self.store.chunks.append({"document_id": document_id, "user_id": self.user_id,
-                                      "chunk_index": i, "content": content, "embedding": emb})
+            self.store.chunks.append(
+                {
+                    "document_id": document_id,
+                    "user_id": self.user_id,
+                    "chunk_index": i,
+                    "content": content,
+                    "embedding": emb,
+                }
+            )
 
     def match_chunks(self, embedding, top_k):
         self.match_calls.append((embedding, top_k))
         docs = {d["id"]: d for d in self._mine(self.store.documents) if d["status"] == "completed"}
         hits = [c for c in self._mine(self.store.chunks) if c["document_id"] in docs]
-        return [{"id": str(uuid.uuid4()), "document_id": c["document_id"],
-                 "filename": docs[c["document_id"]]["filename"], "chunk_index": c["chunk_index"],
-                 "content": c["content"], "similarity": 0.9} for c in hits[:top_k]]
+        return [
+            {
+                "id": str(uuid.uuid4()),
+                "document_id": c["document_id"],
+                "filename": docs[c["document_id"]]["filename"],
+                "chunk_index": c["chunk_index"],
+                "content": c["content"],
+                "similarity": 0.9,
+            }
+            for c in hits[:top_k]
+        ]
 
 
 class ScriptedLLM:

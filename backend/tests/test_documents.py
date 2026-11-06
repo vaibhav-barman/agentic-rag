@@ -36,13 +36,14 @@ def client(store, monkeypatch):
 
 # --- chunking -------------------------------------------------------------
 
+
 def test_chunk_text_respects_size_and_overlap():
     words = " ".join(f"word{i}" for i in range(2000))
     chunks = ingestion.chunk_text(words, size=500, overlap=100)
     assert len(chunks) > 1
     assert all(len(c) <= 500 for c in chunks)
     # Neighbours share text (overlap) and no word is cut in half.
-    for a, b in zip(chunks, chunks[1:]):
+    for a, b in zip(chunks, chunks[1:], strict=False):
         assert a.split()[-1] in b
         assert all(w.startswith("word") for w in b.split())
     # Everything is covered.
@@ -55,9 +56,10 @@ def test_chunk_text_small_and_empty():
 
 
 def test_extract_text_pdf():
+    import io
+
     from pypdf import PdfWriter
 
-    import io
     w = PdfWriter()
     w.add_blank_page(width=200, height=200)
     buf = io.BytesIO()
@@ -66,6 +68,7 @@ def test_extract_text_pdf():
 
 
 # --- endpoints ------------------------------------------------------------
+
 
 def upload(client, user, name, content, ctype="text/plain"):
     return client.post("/documents", headers=h(user), files={"file": (name, content, ctype)})
@@ -76,7 +79,10 @@ def test_upload_list_delete(client, store):
     assert r.status_code == 201, r.text
     doc = r.json()
     assert doc["status"] == "completed" and doc["chunk_count"] == 1
-    assert len(store.chunks) == 1 and store.chunks[0]["embedding"] == [float(len(store.chunks[0]["content"])), 1.0]
+    assert len(store.chunks) == 1 and store.chunks[0]["embedding"] == [
+        float(len(store.chunks[0]["content"])),
+        1.0,
+    ]
 
     assert [d["id"] for d in client.get("/documents", headers=h(USER_A)).json()] == [doc["id"]]
     assert client.delete(f"/documents/{doc['id']}", headers=h(USER_A)).status_code == 204
