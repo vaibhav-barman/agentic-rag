@@ -212,6 +212,9 @@ test('M5/M7/M8: DOCX and HTML ingest, SQL tool counts, sub-agent reads a whole d
   // The first DOCX can take a while: docling loads on first use.
   await expect(docx.getByTestId('doc-status')).toHaveText('completed', { timeout: 150_000 })
   await expect(html.getByTestId('doc-status')).toHaveText('completed', { timeout: 150_000 })
+  // What the SQL tool should report (earlier tests may have left files in this library).
+  const total = await page.getByTestId('document-row').count()
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
 
   await page.getByRole('link', { name: 'Chat' }).click()
 
@@ -225,7 +228,7 @@ test('M5/M7/M8: DOCX and HTML ingest, SQL tool counts, sub-agent reads a whole d
   await expect(sqlStep).toHaveAttribute('data-status', 'ok')
   await sqlStep.locator('summary').click()
   await expect(sqlStep.getByTestId('sql-query')).toContainText(/select/i)
-  await expect(counted.locator('.prose-chat').last()).toContainText(/\b(2|two)\b/i)
+  await expect(counted.locator('.prose-chat').last()).toContainText(new RegExp(`\\b(${total}|${words[total]})\\b`, 'i'))
 
   // Module 8: a whole-document task is delegated to a sub-agent, shown nested.
   const summary = await ask(

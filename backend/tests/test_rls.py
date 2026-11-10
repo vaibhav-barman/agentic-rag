@@ -320,8 +320,10 @@ def test_readonly_sql_is_scoped_by_rls_and_refuses_writes(users):
     mine = run(a, f"select filename from documents where filename = '{name}'")
     assert mine == [{"filename": name}]
     assert run(b, f"select filename from documents where filename = '{name}'") == []
-    # B's total never includes A's rows.
-    assert run(b, "select count(*) as n from documents where user_id <> auth.uid()") == [{"n": 0}]
+    # B's totals never include A's rows: SQL sees exactly what the table API sees.
+    b_visible = len(b.table("documents").select("id").execute().data)
+    assert run(b, "select count(*) as n from documents") == [{"n": b_visible}]
+    assert run(b, f"select count(*) as n from documents where user_id = '{a_id}'") == [{"n": 0}]
 
     for bad in (
         f"delete from documents where filename = '{name}'",
@@ -329,6 +331,7 @@ def test_readonly_sql_is_scoped_by_rls_and_refuses_writes(users):
         "select * from gone",
         "select 1; select 2",
         "select * from auth.users",
+        "select auth.uid()",
         "select pg_sleep(1)",
         "select set_config('role', 'postgres', true)",
     ):
