@@ -1,17 +1,20 @@
-import { FileTextIcon } from 'lucide-react'
+import { FileTextIcon, GlobeIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
 const MAX_CHARS = 150
 
-/** One cited file, shown as a marginal note: filename plus the matched passage, highlighted. */
+/** One cited file or web page, shown as a marginal note: its name plus the matched passage, highlighted. */
 export function SourceNote({
   filename,
   excerpt,
+  url,
   className,
 }: {
   filename: string
   excerpt: string
+  /** Set for web sources: the title links to the page. */
+  url?: string | null
   className?: string
 }) {
   const flat = excerpt.replace(/\s+/g, ' ').trim()
@@ -21,8 +24,24 @@ export function SourceNote({
   return (
     <figure className={cn('border-l-2 border-primary/60 pl-3 text-[0.8125rem] leading-snug', className)} title={flat}>
       <figcaption className="flex items-center gap-1.5 font-medium text-foreground">
-        <FileTextIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-        <span className="truncate">{filename}</span>
+        {url ? (
+          <>
+            <GlobeIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="truncate underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+            >
+              {filename}
+            </a>
+          </>
+        ) : (
+          <>
+            <FileTextIcon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="truncate">{filename}</span>
+          </>
+        )}
       </figcaption>
       {short && (
         <blockquote className="mt-1.5 font-serif text-[0.875rem] leading-relaxed text-muted-foreground">

@@ -106,6 +106,19 @@ export default function Chat() {
       }
       for await (const ev of streamChat(threadId, text, controller.signal)) {
         if (ev.event === 'delta') patch((m) => ({ ...m, content: m.content + ev.data.text }))
+        else if (ev.event === 'tool_call') patch((m) => ({ ...m, steps: [...(m.steps ?? []), ev.data] }))
+        else if (ev.event === 'tool_result')
+          patch((m) => ({
+            ...m,
+            steps: (m.steps ?? []).map((s) => (s.id === ev.data.id ? { ...s, ...ev.data } : s)),
+          }))
+        else if (ev.event === 'subagent_delta')
+          patch((m) => ({
+            ...m,
+            steps: (m.steps ?? []).map((s) =>
+              s.id === ev.data.parent_id ? { ...s, text: (s.text ?? '') + ev.data.text } : s,
+            ),
+          }))
         else if (ev.event === 'sources')
           patch((m) => ({ ...m, sources: [...(m.sources ?? []), ...ev.data.sources] }))
         else if (ev.event === 'error') patch((m) => ({ ...m, error: ev.data.message }))
@@ -116,7 +129,12 @@ export default function Chat() {
         patch((m) => ({ ...m, error: err instanceof Error ? err.message : 'Request failed' }))
       }
     } finally {
-      patch((m) => ({ ...m, pending: false }))
+      // Anything still "running" when the stream ends (stop button, dropped connection) did not finish.
+      patch((m) => ({
+        ...m,
+        pending: false,
+        steps: m.steps?.map((s) => (s.ok == null ? { ...s, ok: false, summary: 'Stopped' } : s)),
+      }))
       setStreaming(false)
       abortRef.current = null
       void refreshThreads()
@@ -147,8 +165,8 @@ export default function Chat() {
               <div className="max-w-md">
                 <h1 className="text-4xl leading-tight font-medium">How can I help?</h1>
                 <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                  Ask a question and I'll answer it. Add files and I'll answer from them, with the passage I
-                  used shown beside each answer.
+                  Ask a question and I'll answer it. Add files and I'll search them, read whole documents when
+                  that's what it takes, and show the passages and steps behind each answer.
                 </p>
                 <Button asChild variant="outline" className="mt-5 h-9 bg-card px-3.5">
                   <Link to="/ingestion">Upload files</Link>

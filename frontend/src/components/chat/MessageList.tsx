@@ -3,26 +3,36 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { SourceNote } from '@/components/chat/SourceNote'
-import type { Source } from '@/lib/api'
+import { ToolSteps } from '@/components/chat/ToolSteps'
+import type { Source, Step } from '@/lib/api'
 
 export type UiMessage = {
   id: string
   role: 'user' | 'assistant'
   content: string
   sources?: Source[] | null
+  steps?: Step[] | null
   pending?: boolean
   error?: string
 }
 
-/** Cited files sit in the right margin on wide screens and under the answer on narrow ones. */
+/** Cited files and web pages sit in the right margin on wide screens and under the answer on narrow ones. */
 function Sources({ sources }: { sources: Source[] }) {
-  // One note per file; the best-matching excerpt comes first.
-  const byFile = new Map<string, Source>()
-  for (const s of sources) if (!byFile.has(s.filename)) byFile.set(s.filename, s)
+  // One note per file or page; the best-matching excerpt comes first.
+  const unique = new Map<string, Source>()
+  for (const s of sources) {
+    const key = s.url ?? s.filename ?? ''
+    if (key && !unique.has(key)) unique.set(key, s)
+  }
   return (
     <aside className="flex flex-col gap-4 lg:pt-1.5" data-testid="sources" aria-label="Sources">
-      {[...byFile.values()].map((s) => (
-        <SourceNote key={s.filename} filename={s.filename} excerpt={s.content} />
+      {[...unique.entries()].map(([key, s]) => (
+        <SourceNote
+          key={key}
+          filename={s.url ? (s.title ?? s.url) : (s.filename ?? '')}
+          url={s.url}
+          excerpt={s.content}
+        />
       ))}
     </aside>
   )
@@ -51,6 +61,7 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
             className="grid gap-x-10 gap-y-4 lg:grid-cols-[minmax(0,44rem)_15rem]"
           >
             <div className="min-w-0">
+              {m.steps && m.steps.length > 0 && <ToolSteps steps={m.steps} />}
               {m.content ? (
                 <div className="prose-chat">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
