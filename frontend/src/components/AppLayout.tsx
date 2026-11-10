@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { Wordmark } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 import { getMe, type Me } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -85,6 +86,7 @@ export function AppLayout() {
       <main className="min-h-0 flex-1">
         <Outlet />
       </main>
+      <Toaster position="bottom-right" theme="light" />
     </div>
   )
 }
