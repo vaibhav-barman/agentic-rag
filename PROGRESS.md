@@ -46,8 +46,10 @@ database, so nothing below has been validated live. Each module is therefore `[-
 until its "Live validation" line is ticked.
 
 **To finish:**
-1. Add `SUPABASE_DB_URL` to `backend/.env`, then `backend/venv/bin/python backend/scripts/apply_migrations.py`.
-   Until this is done the app does not work against the hosted database (the code expects the new columns).
+1. Apply migrations `0004`-`0009`. Either add `SUPABASE_DB_URL` to `backend/.env` and run
+   `backend/venv/bin/python backend/scripts/apply_migrations.py`, or run
+   `backend/venv/bin/python backend/scripts/apply_migrations.py --sql 0004` and paste the output into the Supabase SQL Editor.
+   Until this is done the Documents page and chat show "The database is missing migrations" (the code expects the new columns).
 2. `cd backend && venv/bin/pytest -m integration -v`
 3. `cd frontend && npx playwright test e2e/chat.spec.ts` (live Gemini)
 4. Optional: add `TAVILY_API_KEY` and ask a current-events question to validate web search live.
@@ -115,5 +117,11 @@ fallback); text-to-SQL queries the user's own library tables.
   - [ ] Live validation: Playwright whole-document summary; `chat_turn -> sub_agent` trace in LangSmith
   - Not built: model "thinking" text. Gemini's OpenAI-compatible endpoint returns only an opaque `thought_signature`, no thought summaries (probed live), so "reasoning" is shown as the step timeline plus the sub-agent's streamed text.
 
-**Tests now:** backend unit 78/78 (`pytest -m "not integration"`), ruff + pyright clean, frontend build + lint clean, Playwright `agent-ui.spec.ts` 2/2.
+### After the modules
+- [x] Database errors return JSON with CORS headers. An un-migrated database used to show only "Failed to fetch" in the browser; it now says the migrations are missing and how to run them (pytest)
+- [x] `apply_migrations.py --sql` prints a paste-ready script for the SQL Editor
+- [x] Frontend redesign: black and warm-white themes with a remembered toggle, verdigris as the only colour, Geist + Newsreader, starter prompts on the empty chat, phone-width overflow fixed (Playwright, mocked API, both themes checked by screenshot)
+- [x] README rewritten (quick start, architecture, tools, configuration, migrations, troubleshooting)
+
+**Tests now:** backend unit 80/80 (`pytest -m "not integration"`), ruff + pyright clean, frontend build + lint clean, Playwright `agent-ui.spec.ts` 2/2 and `auth.spec.ts` 7/7.
 **Written but not run** (need the migrations): 6 new integration tests in `tests/test_rls.py`, 2 new live tests in `e2e/chat.spec.ts`.
