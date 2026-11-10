@@ -59,12 +59,33 @@ export const getMe = () => apiJson<Me>('/me')
 
 export type Thread = { id: string; title: string | null; created_at: string; updated_at: string | null }
 
+/** Where an answer came from: a passage of an uploaded file, or a web page. */
 export type Source = {
-  document_id: string
-  filename: string
-  chunk_index: number
+  type?: 'document' | 'web'
   content: string
-  similarity: number
+  document_id?: string | null
+  filename?: string | null
+  chunk_index?: number | null
+  similarity?: number | null
+  score?: number | null
+  vector_rank?: number | null
+  keyword_rank?: number | null
+  url?: string | null
+  title?: string | null
+}
+
+/** One tool call made while answering. A sub-agent's steps point at their parent step. */
+export type Step = {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+  parent_id?: string | null
+  /** Undefined while the tool is still running. */
+  ok?: boolean | null
+  summary?: string | null
+  data?: Record<string, unknown> | null
+  /** Text streamed by a sub-agent (analyze_document steps only). */
+  text?: string | null
 }
 
 export type Message = {
@@ -72,6 +93,7 @@ export type Message = {
   role: 'user' | 'assistant'
   content: string
   sources?: Source[] | null
+  steps?: Step[] | null
   created_at: string
 }
 
@@ -83,7 +105,13 @@ export const listMessages = (threadId: string) => apiJson<Message[]>(`/threads/$
 export type ChatEvent =
   | { event: 'user_message'; data: { id: string } }
   | { event: 'delta'; data: { text: string } }
-  | { event: 'sources'; data: { query: string; sources: Source[] } }
+  | { event: 'tool_call'; data: Step }
+  | {
+      event: 'tool_result'
+      data: Pick<Step, 'id' | 'ok' | 'summary' | 'data' | 'parent_id'>
+    }
+  | { event: 'subagent_delta'; data: { parent_id: string; text: string } }
+  | { event: 'sources'; data: { query: string | null; sources: Source[] } }
   | { event: 'done'; data: { message_id: string; title: string | null } }
   | { event: 'error'; data: { message: string } }
 
@@ -123,13 +151,33 @@ export async function* streamChat(
 
 // --- Documents --------------------------------------------------------------
 
+export type DocumentMetadata = {
+  title?: string
+  summary?: string
+  document_type?: string
+  topics?: string[]
+  language?: string
+  key_entities?: string[]
+  document_date?: string
+}
+
 export type DocumentRow = {
   id: string
   filename: string
-  status: 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'processing' | 'completed' | 'failed'
   error: string | null
   chunk_count: number
+  file_size: number | null
+  metadata: DocumentMetadata
+  /** What the last ingestion did (record manager). */
+  ingest_stats: { embedded: number; reused: number; removed: number } | null
   created_at: string
+  updated_at: string | null
+}
+
+/** created: new file. updated: same name, new content. unchanged / duplicate: nothing to do. */
+export type UploadResult = DocumentRow & {
+  action: 'created' | 'updated' | 'unchanged' | 'duplicate'
 }
 
 export const listDocuments = () => apiJson<DocumentRow[]>('/documents')
@@ -137,5 +185,5 @@ export const deleteDocument = (id: string) => apiFetch(`/documents/${id}`, { met
 export function uploadDocument(file: File) {
   const body = new FormData()
   body.append('file', file)
-  return apiJson<DocumentRow>('/documents', { method: 'POST', body })
+  return apiJson<UploadResult>('/documents', { method: 'POST', body })
 }

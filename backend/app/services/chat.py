@@ -1,43 +1,38 @@
-"""One chat turn: memory from stored history, optional file_search tool, streaming.
+"""One chat turn of the main agent: memory from stored history, tools, streaming.
 
-Yields SSE-ready events: ("delta", {"text"}), ("sources", {"sources"}),
-("done", {"message_id", "title"}), ("error", {"message"}).
+Yields SSE-ready events:
+  ("delta", {text})
+  ("tool_call", {id, name, arguments, parent_id})      parent_id set for sub-agent steps
+  ("tool_result", {id, ok, summary, data, parent_id})
+  ("subagent_delta", {parent_id, text})
+  ("sources", {query, sources})
+  ("done", {message_id, title})
+  ("error", {message})
 """
 
-import json
 from collections.abc import AsyncIterator
 
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
 
 from app.config import get_settings
-from app.services import llm
+from app.services.agent import StepRecorder, public_sources, run_agent
+from app.services.tools.base import Tool, ToolContext
+from app.services.tools.registry import available_tools
 
-SYSTEM_PROMPT = (
-    "You are a helpful assistant in a retrieval-augmented chat app. "
-    "Use the conversation history for context. "
-    "When the user asks about their documents or about facts you may not know, "
-    "call the file_search tool and ground your answer in the returned excerpts, "
-    "naming the source file. If the excerpts don't contain the answer, say so. "
-    "Answer in Markdown."
+BASE_PROMPT = (
+    "You are Glossa, a helpful assistant in a retrieval-augmented chat app. "
+    "Use the conversation history for context. Answer in Markdown."
 )
-
-FILE_SEARCH_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "file_search",
-        "description": (
-            "Search the user's uploaded documents and return the most relevant excerpts."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "What to look for, in plain words."}
-            },
-            "required": ["query"],
-        },
-    },
-}
+NO_TOOLS_PROMPT = (
+    " The user has not uploaded any documents yet, so answer from your own knowledge "
+    "and say so if you are unsure."
+)
+ROUTING_PROMPT = (
+    "\n\nChoosing a tool: the user's documents come first. If they do not contain the "
+    "answer, say so plainly instead of guessing"
+)
+LIBRARY_LIMIT = 50
 
 
 def make_title(text: str, limit: int = 60) -> str:
@@ -45,30 +40,33 @@ def make_title(text: str, limit: int = 60) -> str:
     return title if len(title) <= limit else title[: limit - 1].rstrip() + "…"
 
 
-async def file_search(repo, query: str) -> list[dict]:
-    """Embed the query and return the top chunks as source dicts."""
-    settings = get_settings()
-    [vector] = await llm.embed([query])
-    hits = repo.match_chunks(vector, settings.file_search_top_k)
-    return [
-        {
-            "document_id": h["document_id"],
-            "filename": h["filename"],
-            "chunk_index": h["chunk_index"],
-            "content": h["content"],
-            "similarity": round(float(h["similarity"]), 4),
-        }
-        for h in hits
-    ]
-
-
-def format_tool_result(sources: list[dict]) -> str:
-    if not sources:
-        return "No matching excerpts found in the user's documents."
-    return "\n\n".join(
-        f"[{i}] {s['filename']} (chunk {s['chunk_index']}):\n{s['content']}"
-        for i, s in enumerate(sources, start=1)
+def build_system_prompt(tools: list[Tool], library: list[dict]) -> str:
+    """Base instructions + guidance for each available tool + the user's document list."""
+    if not tools:
+        return BASE_PROMPT + NO_TOOLS_PROMPT
+    names = {t.name for t in tools}
+    prompt = BASE_PROMPT + "\n\nTools:\n" + "\n".join(f"- {t.guidance}" for t in tools)
+    prompt += ROUTING_PROMPT
+    prompt += (
+        ", or fall back to web_search and make clear the answer is from the web."
+        if "web_search" in names
+        else "."
     )
+    if library:
+        lines = []
+        for doc in library:
+            meta = doc.get("metadata") or {}
+            parts = [f"- {doc['filename']} (id: {doc['id']}"]
+            if meta.get("document_type"):
+                parts.append(f", type: {meta['document_type']}")
+            if meta.get("topics"):
+                parts.append(f", topics: {', '.join(meta['topics'])}")
+            line = "".join(parts) + ")"
+            if meta.get("summary"):
+                line += f": {meta['summary']}"
+            lines.append(line)
+        prompt += "\n\nThe user's documents:\n" + "\n".join(lines)
+    return prompt
 
 
 def _trace_inputs(inputs: dict) -> dict:
@@ -82,81 +80,64 @@ async def run_chat_turn(repo, thread: dict, user_content: str) -> AsyncIterator[
     settings = get_settings()
     thread_id = thread["id"]
 
-    # Memory: the stored history (which already includes this user message).
-    history = repo.list_messages(thread_id, limit=settings.chat_history_limit)
-    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-        {"role": m["role"], "content": m["content"]} for m in history
-    ]
+    ctx = ToolContext(
+        repo=repo, user_content=user_content, library=repo.library_overview(LIBRARY_LIMIT)
+    )
+    tools = available_tools(ctx)
 
-    file_search_enabled = repo.has_completed_documents()
-    tools = [FILE_SEARCH_TOOL] if file_search_enabled else None
+    # Memory: the stored history (which already includes this user message).
+    # The API is stateless, so the last N messages are sent on every turn.
+    history = repo.list_messages(thread_id, limit=settings.chat_history_limit)
+    messages: list[dict] = [
+        {"role": "system", "content": build_system_prompt(tools, ctx.library)}
+    ] + [{"role": m["role"], "content": m["content"]} for m in history]
+
     run = get_current_run_tree()
     if run is not None:
         run.metadata.update(
             {
                 "user_id": repo.user_id,
                 "thread_id": thread_id,
-                "file_search_enabled": file_search_enabled,
+                "tools_offered": [t.name for t in tools],
+                "file_search_enabled": any(t.name == "file_search" for t in tools),
                 "model": settings.gemini_model,
             }
         )
 
     answer = ""
     all_sources: list[dict] = []
-    file_search_used = False
+    recorder = StepRecorder()
     try:
-        for round_no in range(settings.max_tool_rounds + 1):
-            # On the last round, withhold tools so the model must answer.
-            round_tools = tools if round_no < settings.max_tool_rounds else None
-            tool_calls: list[llm.ToolCall] = []
-            async for event in llm.stream_chat(messages, round_tools):
-                if event.type == "delta":
-                    answer += event.text
-                    yield "delta", {"text": event.text}
-                elif event.type == "tool_calls":
-                    tool_calls = event.tool_calls
-            if not tool_calls:
-                break
-
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [
-                        {
-                            "id": c.id,
-                            "type": "function",
-                            "function": {"name": c.name, "arguments": c.arguments or "{}"},
-                            # Gemini rejects the follow-up unless its thought_signature is echoed.
-                            **({"extra_content": c.extra_content} if c.extra_content else {}),
-                        }
-                        for c in tool_calls
-                    ],
-                }
-            )
-            for call in tool_calls:
-                if call.name == "file_search":
-                    file_search_used = True
-                    query = str(call.parsed_arguments().get("query") or user_content)
-                    sources = await file_search(repo, query)
-                    all_sources.extend(sources)
-                    yield "sources", {"query": query, "sources": _public_sources(sources)}
-                    result = format_tool_result(sources)
-                else:
-                    result = json.dumps({"error": f"Unknown tool {call.name}"})
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+        async for event, data in run_agent(
+            messages, tools, ctx, max_rounds=settings.max_tool_rounds
+        ):
+            if event == "final":
+                continue
+            recorder.record(event, data)
+            if event == "delta":
+                answer += data["text"]
+            elif event == "sources":
+                all_sources.extend(data["sources"])
+            yield event, data
     except Exception as exc:
         yield "error", {"message": f"The model request failed: {exc}"}
         if not answer:
             return
 
+    steps = recorder.steps
     if run is not None:
-        run.metadata["file_search_used"] = file_search_used
+        used = [s["name"] for s in steps]
+        run.metadata["tools_used"] = used
+        run.metadata["file_search_used"] = "file_search" in used
 
     if not answer.strip():
         answer = "_(The model returned an empty response.)_"
     saved = repo.add_message(
-        thread_id, "assistant", answer, sources=_public_sources(all_sources) or None
+        thread_id,
+        "assistant",
+        answer,
+        sources=public_sources(all_sources) or None,
+        steps=steps or None,
     )
     title = thread.get("title")
     if not title:
@@ -165,16 +146,3 @@ async def run_chat_turn(repo, thread: dict, user_content: str) -> AsyncIterator[
     else:
         repo.update_thread(thread_id)
     yield "done", {"message_id": saved["id"], "title": title}
-
-
-def _public_sources(sources: list[dict]) -> list[dict]:
-    """Dedupe by (document, chunk) and trim content to a preview for the UI."""
-    seen: set[tuple] = set()
-    out = []
-    for s in sources:
-        key = (s["document_id"], s["chunk_index"])
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append({**s, "content": s["content"][:400]})
-    return out

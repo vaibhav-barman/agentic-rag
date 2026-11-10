@@ -34,3 +34,86 @@ Plan: `.agent/plans/1.module-1-app-shell.md`
 
 **Module 1 complete.** Tests: backend 41/41 (incl. hosted RLS + chunk isolation), Playwright e2e 10/10 (live Gemini).
 Models (set in `backend/.env`): chat `gemini-flash-lite-latest`, embeddings `gemini-embedding-001` (1024 dims). Free tier quotas are per model per day; re-upload documents after switching embedding models.
+
+---
+
+## Modules 2-8
+Plan: `.agent/plans/3.modules-2-8.md`. Branch: `modules-2-8`.
+
+**State:** all seven modules are built and validated live against the hosted Supabase
+project and the Gemini API. Migrations `0004`-`0009` were applied through the SQL Editor.
+
+**Still open:**
+1. Web search has not been run live: add `TAVILY_API_KEY` to `backend/.env` and ask a current-events question. (Unit-tested with a mocked Tavily response.)
+2. Re-upload documents ingested during Module 1: they stay searchable but have no hash, metadata or stored full text.
+
+Decisions: Option A (managed-RAG schema dropped); Gemini as reranker; Tavily for web
+search; docling for parsing (installs and runs on Python 3.14; basic parsers kept as
+fallback); text-to-SQL queries the user's own library tables.
+
+### Module 2: BYO Retrieval + Memory
+- [x] **Module 2**
+  - [x] 2.1 Migration `0004_byo_retrieval.sql` written: Option A cleanup, `documents` storage/status columns, private `documents` Storage bucket with per-user policies, Realtime publication, `match_document_chunks` threshold, `messages.steps`
+  - [x] 2.2 `scripts/apply_migrations.py` (psycopg, `public.schema_migrations`, baselines `0001`-`0003`)
+  - [x] 2.3 `POST /documents` stores the file in Storage and returns `pending`; `process_document` runs in the background; delete removes the stored file (pytest)
+  - [x] 2.4 Documents page subscribes to Realtime (`postgres_changes`), with a polling fallback only when the socket is down
+  - [x] 2.5 Stateless chat memory: last `CHAT_HISTORY_LIMIT` stored messages sent each turn (unchanged from Module 1; pytest)
+  - [x] Live validation: migration applied; integration test for Storage isolation passes; Playwright: status reaches `completed` over Realtime with zero refetches of the list
+
+### Module 3: Record Manager
+- [x] **Module 3**
+  - [x] 3.1 Migration `0005_record_manager.sql` written: `content_hash` on documents and chunks, `ingest_stats`, unique `(user_id, filename)`
+  - [x] 3.2 `record_manager.decide()`: created / updated / unchanged / duplicate (pytest: same file twice embeds once; same bytes under another name is a duplicate; failed upload can be retried)
+  - [x] 3.3 `plan_chunks()`: chunk-hash diff so only new chunks are embedded, moved ones re-indexed, stale ones deleted (pytest: append embeds 1 chunk, rewrite replaces only the changed chunk)
+  - [x] 3.4 UI: "already up to date" / "same content as" toasts, "n new, n reused" on the row (Playwright, mocked API)
+  - [x] Live validation: Playwright re-upload shows "already up to date" and the list still has one row; integration test for per-user filename uniqueness
+
+### Module 4: Metadata Extraction
+- [x] **Module 4**
+  - [x] 4.1 Migration `0006_metadata.sql` written: `documents.metadata` jsonb + GIN, RPC `filter` / `filename_filter` / `document_id_filter`
+  - [x] 4.2 `DocumentMetadata` Pydantic model + `llm.complete_structured()` (checked live against Gemini: structured output parses)
+  - [x] 4.3 Extraction during ingestion, non-fatal on failure (pytest)
+  - [x] 4.4 `file_search` accepts `document_type`, `topic`, `filename`; retries unfiltered if the filter matches nothing (pytest)
+  - [x] 4.5 UI: type badge, topics, summary on each document (Playwright, mocked API)
+  - [x] Live validation: integration test for type, topic, filename and document filters on both search functions; Playwright: metadata appears on the uploaded row
+
+### Module 5: Multi-Format Support
+- [x] **Module 5**
+  - [x] 5.1 `parsing.parse_document()`: PDF/DOCX/HTML via docling, `.md`/`.txt` read directly (deviation from plan: Markdown is not passed through docling, it is already Markdown); basic parsers as `DOCUMENT_PARSER=basic` and automatic fallback (pytest for both parsers; docling checked on a real text PDF)
+  - [x] 5.2 Chunker prefers Markdown heading boundaries (pytest)
+  - [x] 5.3 Cascade deletes: chunks, stored text and the Storage object go with the document (pytest with fakes)
+  - [x] Live validation: Playwright DOCX + HTML uploads complete and a question is answered from the DOCX; integration test: deleting a document removes its chunks and stored text
+
+### Module 6: Hybrid Search & Reranking
+- [x] **Module 6**
+  - [x] 6.1 Migration `0007_hybrid_search.sql` written: `fts` tsvector column + GIN, `hybrid_search_chunks` RPC (keyword + vector legs, RRF, `search_mode`)
+  - [x] 6.2 `retrieval.search()` with `SEARCH_MODE`, `RETRIEVAL_CANDIDATES`, similarity threshold in vector mode (pytest)
+  - [x] 6.3 LLM reranker with `RERANK_MIN_SCORE`, falls back to fused order on failure (pytest; structured rerank output checked live against Gemini)
+  - [x] Live validation: integration test (exact token `XK-7741-Q` found by the keyword leg, vector/keyword modes, RLS on the RPC); Playwright: exact part number `GH-5520-T` answered with its source
+
+### Module 7: Additional Tools
+- [x] **Module 7**
+  - [x] 7.1 Migration `0008_readonly_sql.sql` written: `execute_readonly_sql` (security invoker, single SELECT, public schema only, read-only transaction, 5s timeout, 100 rows)
+  - [x] 7.2 Tool interface + registry + shared agent loop (`services/agent.py`, `services/tools/`); steps saved in `messages.steps` (pytest)
+  - [x] 7.3 `query_database` tool with Python-side validation (pytest: writes, multi-statement, other schemas refused; rows trimmed)
+  - [x] 7.4 `web_search` tool via Tavily, offered only when `TAVILY_API_KEY` is set, web sources with URLs (pytest with a mocked HTTP transport)
+  - [x] 7.5 UI: step timeline with SQL + rows, search ranks, failed steps, linked web sources (Playwright, mocked API)
+  - [x] Live validation: integration test (SQL RPC scoped by RLS; writes, multi-statement, `auth.*`, `pg_*` refused); Playwright: count question answered through a `query_database` step
+  - [ ] Live web search (needs `TAVILY_API_KEY`)
+
+### Module 8: Sub-Agents
+- [x] **Module 8**
+  - [x] 8.1 Migration `0009_document_contents.sql` written: full parsed text per document, RLS, cascade
+  - [x] 8.2 `analyze_document` tool + `subagent.py`: isolated context (document + task only), own tools `search_in_document` / `read_passages`, only the answer returns (pytest proves the chat history does not reach the sub-agent and the document does not reach the main agent)
+  - [x] 8.3 Events carry `parent_id`; nested steps and sub-agent text persisted (pytest)
+  - [x] 8.4 UI: nested sub-agent block with its steps and streamed text, live and after reload, desktop and phone width (Playwright, mocked API)
+  - [x] Live validation: Playwright whole-document summary shows the nested sub-agent, includes the document's last line, and survives a reload; LangSmith shows `sub_agent` runs under `chat_turn` with the document and task as inputs
+  - Not built: model "thinking" text. Gemini's OpenAI-compatible endpoint returns only an opaque `thought_signature`, no thought summaries (probed live), so "reasoning" is shown as the step timeline plus the sub-agent's streamed text.
+
+### After the modules
+- [x] Database errors return JSON with CORS headers. An un-migrated database used to show only "Failed to fetch" in the browser; it now says the migrations are missing and how to run them (pytest)
+- [x] `apply_migrations.py --sql` prints a paste-ready script for the SQL Editor
+- [x] Frontend redesign: black and warm-white themes with a remembered toggle, verdigris as the only colour, Geist + Newsreader, starter prompts on the empty chat, phone-width overflow fixed (Playwright, mocked API, both themes checked by screenshot)
+- [x] README rewritten (quick start, architecture, tools, configuration, migrations, troubleshooting)
+
+**Tests now:** backend 90/90 (80 unit + 10 against the hosted database), ruff + pyright clean, frontend build + lint clean, Playwright 14/14 (2 mocked UI, 7 auth, 5 live with Gemini).

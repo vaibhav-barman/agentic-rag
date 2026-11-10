@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { Wordmark } from '@/components/Logo'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 import { getMe, type Me } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -44,8 +46,9 @@ export function AppLayout() {
 
   return (
     <div className="flex h-svh flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card/60 px-4 sm:gap-8 sm:px-5">
-        <Wordmark />
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b px-3 sm:gap-8 sm:px-5">
+        {/* On the narrowest phones the mark alone stands in for the name. */}
+        <Wordmark className="[&>span]:max-[26rem]:hidden" />
         <nav className="flex h-full items-stretch gap-1" aria-label="Main">
           {navItems.map((item) => (
             <NavLink
@@ -66,10 +69,10 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="ml-auto flex min-w-0 items-center gap-3">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5">
           <span
             className={cn(
-              'hidden max-w-56 truncate text-sm sm:block',
+              'mr-2 hidden max-w-56 truncate text-sm sm:block',
               meError ? 'text-destructive' : 'text-muted-foreground',
             )}
             data-testid="me-email"
@@ -77,6 +80,7 @@ export function AppLayout() {
           >
             {meError ? 'API error' : (me?.email ?? '…')}
           </span>
+          <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={handleSignOut}>
             Log out
           </Button>
@@ -85,6 +89,7 @@ export function AppLayout() {
       <main className="min-h-0 flex-1">
         <Outlet />
       </main>
+      <Toaster position="bottom-right" />
     </div>
   )
 }

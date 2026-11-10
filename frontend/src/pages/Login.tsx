@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 
 import { SourceNote } from '@/components/chat/SourceNote'
 import { Wordmark } from '@/components/Logo'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { FullPageSpinner } from '@/components/ProtectedRoute'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -62,8 +63,10 @@ export default function Login() {
       <aside className="hidden flex-col justify-between border-r bg-sidebar p-12 lg:flex">
         <Wordmark />
         <div className="max-w-xl">
-          <h2 className="text-5xl leading-[1.1] font-medium">Answers that show their source.</h2>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
+          <h2 className="text-[clamp(3rem,5vw,4.5rem)] leading-[0.98] font-normal tracking-[-0.03em]">
+            Answers that show their source.
+          </h2>
+          <p className="mt-6 max-w-md font-serif text-xl leading-relaxed text-muted-foreground">
             Add your documents, ask a question, and read the answer next to the passage it came from.
           </p>
           <div className="mt-12 grid max-w-xl grid-cols-[minmax(0,1fr)_11.5rem] gap-x-8" aria-hidden="true">
@@ -84,12 +87,13 @@ export default function Login() {
         <p className="text-sm text-muted-foreground">Your documents stay private to your account.</p>
       </aside>
 
-      <main className="flex items-center justify-center px-5 py-10">
+      <main className="relative flex items-center justify-center px-5 py-10">
+        <ThemeToggle className="absolute top-4 right-4" />
         <div className="w-full max-w-sm">
           <Wordmark className="mb-10 lg:hidden" />
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
-              <h1 className="text-3xl font-medium">{mode === 'login' ? 'Log in' : 'Create an account'}</h1>
+              <h1 className="text-4xl font-normal tracking-[-0.02em]">{mode === 'login' ? 'Log in' : 'Create an account'}</h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 {mode === 'login'
                   ? 'Use your email and password to continue.'
