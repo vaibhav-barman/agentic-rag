@@ -15,6 +15,7 @@ from functools import lru_cache
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 
 from app.config import get_settings
 
@@ -136,6 +137,21 @@ async def stream_chat(
         yield StreamEvent(type="tool_calls", tool_calls=[calls[i] for i in sorted(calls)])
     if usage:
         yield StreamEvent(type="usage", usage=usage)
+
+
+@traceable(name="gemini_structured", run_type="llm")
+async def complete_structured[T: BaseModel](messages: list[dict], response_model: type[T]) -> T:
+    """One non-streaming completion whose answer must match a Pydantic model."""
+    _tag_llm_run()
+    response = await get_client().chat.completions.parse(
+        model=get_settings().gemini_model,
+        messages=messages,  # pyright: ignore[reportArgumentType]
+        response_format=response_model,
+    )
+    parsed = response.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError("The model returned no structured output")
+    return parsed
 
 
 @traceable(name="gemini_embed", run_type="embedding")
