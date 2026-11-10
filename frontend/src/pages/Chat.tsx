@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MenuIcon } from 'lucide-react'
+import { CornerDownLeftIcon, MenuIcon } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ChatInput } from '@/components/chat/ChatInput'
@@ -14,6 +14,12 @@ import {
   streamChat,
   type Thread,
 } from '@/lib/api'
+
+const STARTERS = [
+  'Summarise the document I uploaded most recently',
+  'How many documents do I have, grouped by type?',
+  'What topics do my documents cover?',
+]
 
 export default function Chat() {
   const [params, setParams] = useSearchParams()
@@ -161,16 +167,42 @@ export default function Chat() {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center p-6">
-              <div className="max-w-md">
-                <h1 className="text-4xl leading-tight font-medium">How can I help?</h1>
-                <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-                  Ask a question and I'll answer it. Add files and I'll search them, read whole documents when
-                  that's what it takes, and show the passages and steps behind each answer.
+            <div className="mx-auto flex h-full w-full max-w-[64rem] flex-col justify-center px-5 py-10">
+              <div className="max-w-[44rem]">
+                <h1 className="text-[clamp(2.75rem,7vw,4.75rem)] leading-[0.98] font-normal tracking-[-0.03em]">
+                  How can I help?
+                </h1>
+                <p className="mt-6 max-w-[34rem] font-serif text-xl leading-relaxed text-muted-foreground">
+                  Ask about your documents. Each answer comes with the passages it was drawn from, set
+                  beside it like notes in a margin.
                 </p>
-                <Button asChild variant="outline" className="mt-5 h-9 bg-card px-3.5">
-                  <Link to="/ingestion">Upload files</Link>
-                </Button>
+                <ul className="mt-10 border-t" aria-label="Things to try">
+                  {STARTERS.map((text) => (
+                    <li key={text} className="border-b">
+                      <button
+                        type="button"
+                        onClick={() => void send(text)}
+                        disabled={streaming}
+                        className="group flex w-full items-center justify-between gap-4 py-3.5 text-left text-[0.9375rem] text-foreground/85 transition-colors outline-none hover:text-primary focus-visible:text-primary"
+                      >
+                        {text}
+                        <CornerDownLeftIcon
+                          className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Nothing uploaded yet?{' '}
+                  <Link
+                    to="/ingestion"
+                    className="text-foreground underline decoration-primary decoration-2 underline-offset-4 outline-none hover:text-primary focus-visible:text-primary"
+                  >
+                    Add files
+                  </Link>
+                </p>
               </div>
             </div>
           ) : (

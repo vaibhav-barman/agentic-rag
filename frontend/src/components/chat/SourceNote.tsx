@@ -22,7 +22,7 @@ export function SourceNote({
   const cut = flat.slice(0, MAX_CHARS)
   const short = flat.length > MAX_CHARS ? `${cut.slice(0, cut.lastIndexOf(' ')).trimEnd()}…` : flat
   return (
-    <figure className={cn('border-l-2 border-primary/60 pl-3 text-[0.8125rem] leading-snug', className)} title={flat}>
+    <figure className={cn('border-l-2 border-primary pl-3.5 text-[0.8125rem] leading-snug', className)} title={flat}>
       <figcaption className="flex items-center gap-1.5 font-medium text-foreground">
         {url ? (
           <>
@@ -44,7 +44,7 @@ export function SourceNote({
         )}
       </figcaption>
       {short && (
-        <blockquote className="mt-1.5 font-serif text-[0.875rem] leading-relaxed text-muted-foreground">
+        <blockquote className="mt-1.5 font-serif text-[0.9375rem] leading-relaxed">
           <mark className="rounded-[2px] bg-mark px-0.5 text-mark-foreground [box-decoration-break:clone]">
             {short}
           </mark>

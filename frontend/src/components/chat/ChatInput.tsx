@@ -30,7 +30,7 @@ export function ChatInput({ onSend, onStop, streaming }: Props) {
   return (
     <div className="mx-auto w-full max-w-[64rem] px-5 pb-4">
       <div className="lg:max-w-[44rem]">
-        <div className="relative rounded-2xl border border-input bg-card transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20">
+        <div className="relative rounded-2xl border border-input bg-card transition-[border-color,box-shadow] focus-within:border-primary focus-within:ring-3 focus-within:ring-ring/15">
           <Textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -38,7 +38,7 @@ export function ChatInput({ onSend, onStop, streaming }: Props) {
             placeholder="Ask about your documents, or anything else"
             aria-label="Message"
             rows={1}
-            className="max-h-48 min-h-[3.25rem] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+            className="max-h-48 min-h-[3.5rem] resize-none border-0 bg-transparent px-4 py-4 pr-14 text-base shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0 dark:bg-transparent"
           />
           {streaming ? (
             <Button
@@ -63,7 +63,7 @@ export function ChatInput({ onSend, onStop, streaming }: Props) {
           )}
         </div>
         <p className="mt-2 hidden px-1 text-xs text-muted-foreground sm:block">
-          Press Enter to send, Shift+Enter for a new line.
+          Enter sends. Shift+Enter starts a new line.
         </p>
       </div>
     </div>

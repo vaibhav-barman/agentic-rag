@@ -3,14 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Glossa answers from your own documents and shows where each answer came from." />
     <title>Glossa</title>
     <script>
-      // Follow the system colour scheme before first paint (no flash).
+      // Apply the theme before first paint (no flash): the saved choice, else the system's.
       try {
         var mq = window.matchMedia('(prefers-color-scheme: dark)')
-        var apply = function () { document.documentElement.classList.toggle('dark', mq.matches) }
+        var apply = function () {
+          var saved = localStorage.getItem('glossa-theme')
+          document.documentElement.classList.toggle('dark', saved ? saved === 'dark' : mq.matches)
+        }
         apply()
         mq.addEventListener('change', apply)
       } catch (e) {}

@@ -46,11 +46,11 @@ export function MessageList({ messages }: { messages: UiMessage[] }) {
   }, [messages.length, last?.content])
 
   return (
-    <div className="mx-auto flex w-full max-w-[64rem] flex-col gap-9 px-5 py-8">
+    <div className="mx-auto flex w-full max-w-[64rem] flex-col gap-10 px-5 py-10">
       {messages.map((m) =>
         m.role === 'user' ? (
           <div key={m.id} data-testid="message-user" className="lg:max-w-[44rem]">
-            <p className="w-fit max-w-[90%] rounded-2xl bg-secondary px-4 py-2.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap">
+            <p className="w-fit max-w-[90%] rounded-xl rounded-bl-sm bg-secondary px-4 py-2.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap">
               {m.content}
             </p>
           </div>

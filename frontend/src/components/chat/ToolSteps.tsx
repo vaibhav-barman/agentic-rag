@@ -40,8 +40,8 @@ function describe(step: Step): {
       // The summary ("Read handbook.md (48,210 characters)") says the rest once it is done.
       return {
         icon: BotIcon,
-        label: 'Sub-agent',
-        detail: step.ok == null ? 'reading the whole document…' : undefined,
+        label: step.ok == null ? 'A sub-agent is reading the whole document' : 'A sub-agent read the whole document',
+        detail: undefined,
       }
     case 'search_in_document':
       return { icon: SearchIcon, label: 'Searched inside the document', detail: str(a.query) }
@@ -113,15 +113,11 @@ function Detail({ step, steps }: { step: Step; steps: Step[] }) {
   if (step.name === 'analyze_document') {
     return (
       <div
-        className="mt-2 rounded-lg border border-dashed border-primary/40 bg-primary/[0.03] p-3"
+        className="mt-2 border-l-2 border-primary/70 py-1 pl-4"
         data-testid="subagent"
       >
-        <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-primary uppercase">
-          <BotIcon className="size-3.5" aria-hidden="true" /> Sub-agent · separate context
-        </p>
-        <p className="mt-1.5 text-muted-foreground">
-          <span className="font-medium text-foreground">Task:</span> {str(step.arguments?.task)}
-        </p>
+        <p className="text-primary">Working in its own context, with only this document and this task:</p>
+        <p className="mt-1 text-foreground/90">{str(step.arguments?.task)}</p>
         {children.length > 0 && (
           <ol className="mt-2 flex flex-col gap-1.5" aria-label="Sub-agent steps">
             {children.map((child) => (
@@ -131,7 +127,7 @@ function Detail({ step, steps }: { step: Step; steps: Step[] }) {
         )}
         {step.text && (
           <div
-            className="prose-chat mt-3 border-t pt-3 text-[0.9375rem] leading-relaxed"
+            className="prose-chat mt-3 text-[0.9375rem] leading-relaxed text-foreground/85"
             data-testid="subagent-text"
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{step.text}</ReactMarkdown>
@@ -144,7 +140,7 @@ function Detail({ step, steps }: { step: Step; steps: Step[] }) {
   if (step.name === 'query_database') {
     return (
       <div className="mt-2 flex flex-col gap-2">
-        <pre className="overflow-x-auto rounded-md border bg-card p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap" data-testid="sql-query">
+        <pre className="overflow-x-auto rounded-md border bg-card p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap" data-testid="sql-query">
           {str(data.sql ?? step.arguments?.sql)}
         </pre>
         {step.ok && Array.isArray(data.rows) && (
@@ -213,10 +209,12 @@ function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
     <>
       <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0">
-        <span className="font-medium text-foreground">{label}</span>
-        {detail && <span className="text-muted-foreground"> · {detail}</span>}
+        <span className="text-foreground">{label}</span>
+        {detail && <span className="text-muted-foreground"> “{detail}”</span>}
         {step.summary && !(quiet && step.ok) && (
-          <span className={cn('text-muted-foreground', step.ok === false && 'text-destructive')}> — {step.summary}</span>
+          <span className={cn('block text-muted-foreground', step.ok === false && 'text-destructive')}>
+            {step.summary}
+          </span>
         )}
       </span>
       <span className="ml-auto flex shrink-0 items-center pl-2">
@@ -233,7 +231,7 @@ function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
             <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open/step:rotate-90" aria-hidden="true" />
             {header}
           </summary>
-          <div className="pl-[1.375rem]">
+          <div className="pb-1 pl-[1.375rem]">
             <Detail step={step} steps={steps} />
           </div>
         </details>
@@ -253,7 +251,7 @@ export function ToolSteps({ steps }: { steps: Step[] }) {
   if (!top.length) return null
   return (
     <ol
-      className="mb-4 flex max-w-[68ch] flex-col gap-1.5 border-l-2 border-border pl-3 text-[0.8125rem] leading-snug"
+      className="mb-6 flex max-w-[68ch] flex-col gap-2 text-[0.8125rem] leading-snug"
       data-testid="tool-steps"
       aria-label="Steps taken"
     >

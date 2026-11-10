@@ -55,7 +55,7 @@ export function ThreadSidebar({ threads, activeId, onSelect, onNew, onDelete, di
         )}
       >
         <div className="flex items-center gap-2 p-3">
-          <Button className="flex-1 justify-start gap-2 bg-card" variant="outline" onClick={onNew} disabled={disabled}>
+          <Button className="h-9 flex-1 justify-start gap-2" variant="outline" onClick={onNew} disabled={disabled}>
             <PlusIcon className="size-4" /> New chat
           </Button>
           <Button variant="ghost" size="icon" className="md:hidden" onClick={onClose} aria-label="Close chat list">
@@ -67,8 +67,8 @@ export function ThreadSidebar({ threads, activeId, onSelect, onNew, onDelete, di
             <p className="px-2 py-4 text-sm text-muted-foreground">No conversations yet.</p>
           )}
           {grouped.map((g) => (
-            <section key={g.label} className="mt-3 first:mt-0">
-              <h2 className="px-2 pb-1 font-sans text-xs font-medium text-muted-foreground">{g.label}</h2>
+            <section key={g.label} className="mt-5 first:mt-1">
+              <h2 className="px-2.5 pb-1.5 font-sans text-xs font-normal tracking-normal text-muted-foreground">{g.label}</h2>
               <ul className="flex flex-col gap-0.5">
                 {g.items.map((t) => (
                   <li key={t.id} className="group relative">
@@ -79,9 +79,9 @@ export function ThreadSidebar({ threads, activeId, onSelect, onNew, onDelete, di
                       data-testid="thread-item"
                       aria-current={t.id === activeId ? 'page' : undefined}
                       className={cn(
-                        'flex w-full items-center rounded-lg border px-2.5 py-2 pr-9 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60',
+                        'flex w-full items-center rounded-md border-l-2 py-2 pr-9 pl-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60',
                         t.id === activeId
-                          ? 'border-border bg-card font-medium text-foreground'
+                          ? 'rounded-l-none border-primary bg-sidebar-accent text-foreground'
                           : 'border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-foreground',
                       )}
                     >

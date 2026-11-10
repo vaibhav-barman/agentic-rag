@@ -9,6 +9,9 @@ import { createConfirmedUser, deleteUser, type TestUser } from './supabaseAdmin'
 const API = 'http://localhost:8000'
 const SHOTS = process.env.SCREENSHOT_DIR
 
+// The black theme is the one to look at in screenshots.
+test.use({ colorScheme: 'dark' })
+
 let user: TestUser
 
 test.beforeAll(async () => {
@@ -133,10 +136,12 @@ async function mockApi(page: Page) {
 
 async function logIn(page: Page) {
   await page.goto('/login')
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/login.png` })
   await page.getByLabel('Email').fill(user.email)
   await page.getByLabel('Password').fill(user.password)
   await page.getByRole('button', { name: 'Log in' }).click()
   await expect(page.getByText('How can I help?')).toBeVisible()
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/chat-empty.png` })
 }
 
 async function expectSteps(page: Page) {
@@ -149,7 +154,7 @@ async function expectSteps(page: Page) {
   // Module 8: the sub-agent's own step and text are nested inside its parent step.
   const subagent = top.nth(1).getByTestId('subagent')
   await expect(subagent).toBeVisible()
-  await expect(subagent).toContainText('separate context')
+  await expect(subagent).toContainText('its own context')
   await expect(subagent).toContainText('Summarise the whole handbook, start to finish.')
   await expect(subagent.getByTestId('tool-step')).toHaveCount(1)
   await expect(subagent.getByTestId('tool-step')).toHaveText('Read passages 10–12')
@@ -217,7 +222,8 @@ test('documents page shows status, metadata, reuse stats and the dedup toast', a
   const rows = page.getByTestId('document-row')
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(0).getByTestId('doc-status')).toHaveText('completed')
-  await expect(rows.nth(0).getByTestId('doc-detail')).toContainText('9 passages · 2 new, 7 reused')
+  await expect(rows.nth(0).getByTestId('doc-detail')).toContainText('9 passages')
+  await expect(rows.nth(0).getByTestId('doc-detail')).toContainText('2 new, 7 reused')
   await expect(rows.nth(0).getByTestId('doc-metadata')).toContainText('manual')
   await expect(rows.nth(0).getByTestId('doc-metadata')).toContainText('onboarding')
   await expect(rows.nth(0)).toContainText('How the company onboards people.')
@@ -229,6 +235,12 @@ test('documents page shows status, metadata, reuse stats and the dedup toast', a
   await expect(page.getByText('handbook.md is already up to date')).toBeVisible()
   await expect(rows).toHaveCount(3)
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/documents.png`, fullPage: true })
+  if (SHOTS) {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.waitForTimeout(600) // colour transitions
+    await page.screenshot({ path: `${SHOTS}/documents-light.png`, fullPage: true })
+    await page.emulateMedia({ colorScheme: 'dark' })
+  }
 
   // New formats are accepted client-side; others are still refused.
   await page.getByTestId('file-input').setInputFiles({ name: 'image.png', mimeType: 'image/png', buffer: Buffer.from([0x89]) })

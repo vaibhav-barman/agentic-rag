@@ -1,14 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/geist";
 @import "@fontsource-variable/newsreader";
 @import "@fontsource-variable/newsreader/wght-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
     --font-serif: 'Newsreader Variable', ui-serif, Georgia, serif;
     --font-heading: var(--font-serif);
     --color-mark: var(--mark);
@@ -53,77 +53,85 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Glossa palette: mist paper, blue ink, one verdigris accent, highlighter for citations. */
+/*
+ * Glossa palette: ink and paper, plus verdigris.
+ * Two neutrals do all the work (black and a warm white); the green is the only
+ * colour and is kept for what the app is about: glosses (cited passages), the
+ * current place, and the one primary action on a screen.
+ */
 :root {
-    --background: #f4f6f5;
-    --foreground: #17202a;
+    /* Paper: whitish ground, black ink. */
+    --background: #f4f3ee;
+    --foreground: #0a0a0a;
     --card: #ffffff;
-    --card-foreground: #17202a;
+    --card-foreground: #0a0a0a;
     --popover: #ffffff;
-    --popover-foreground: #17202a;
+    --popover-foreground: #0a0a0a;
     --primary: #0f6b61;
     --primary-foreground: #ffffff;
-    --secondary: #e6ebe9;
-    --secondary-foreground: #17202a;
-    --muted: #eaeeed;
-    --muted-foreground: #596670;
-    --accent: #e6ebe9;
-    --accent-foreground: #17202a;
+    --secondary: #e8e7df;
+    --secondary-foreground: #0a0a0a;
+    --muted: #ecebe4;
+    --muted-foreground: #5a5d57;
+    --accent: #e8e7df;
+    --accent-foreground: #0a0a0a;
     --destructive: #b3261e;
-    --border: #dae0de;
-    --input: #cdd5d2;
+    --border: #dcdbd2;
+    --input: #c6c5bb;
     --ring: #0f6b61;
-    --mark: #f7e58a;
-    --mark-foreground: #3a3000;
+    /* A gloss is marked with a wash of the green, not a second colour. */
+    --mark: color-mix(in oklch, #0f6b61 16%, transparent);
+    --mark-foreground: #0a0a0a;
     --chart-1: #0f6b61;
     --chart-2: #3f8f84;
     --chart-3: #7fb5ac;
     --chart-4: #b9d5d0;
     --chart-5: #dbe9e6;
     --radius: 0.5rem;
-    --sidebar: #eef1f0;
-    --sidebar-foreground: #17202a;
+    --sidebar: #eeede6;
+    --sidebar-foreground: #0a0a0a;
     --sidebar-primary: #0f6b61;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e1e7e5;
-    --sidebar-accent-foreground: #17202a;
-    --sidebar-border: #dae0de;
+    --sidebar-accent: #e3e2d9;
+    --sidebar-accent-foreground: #0a0a0a;
+    --sidebar-border: #dcdbd2;
     --sidebar-ring: #0f6b61;
 }
 
 .dark {
-    --background: #0f1517;
-    --foreground: #e6ecea;
-    --card: #162023;
-    --card-foreground: #e6ecea;
-    --popover: #162023;
-    --popover-foreground: #e6ecea;
+    /* Ink: true black ground, whitish text. */
+    --background: #000000;
+    --foreground: #edece6;
+    --card: #0c0d0c;
+    --card-foreground: #edece6;
+    --popover: #111211;
+    --popover-foreground: #edece6;
     --primary: #4fbdae;
-    --primary-foreground: #06201c;
-    --secondary: #1e2b2f;
-    --secondary-foreground: #e6ecea;
-    --muted: #1a2528;
-    --muted-foreground: #92a19d;
-    --accent: #1e2b2f;
-    --accent-foreground: #e6ecea;
-    --destructive: #f2877f;
-    --border: #26343a;
-    --input: #2f4046;
+    --primary-foreground: #001a15;
+    --secondary: #181a18;
+    --secondary-foreground: #edece6;
+    --muted: #121312;
+    --muted-foreground: #9a9d96;
+    --accent: #181a18;
+    --accent-foreground: #edece6;
+    --destructive: #ff8a80;
+    --border: #232623;
+    --input: #343833;
     --ring: #4fbdae;
-    --mark: #5b5114;
-    --mark-foreground: #fbf0b5;
+    --mark: color-mix(in oklch, #4fbdae 24%, transparent);
+    --mark-foreground: #edece6;
     --chart-1: #4fbdae;
     --chart-2: #3f8f84;
     --chart-3: #2f6a62;
     --chart-4: #234a45;
     --chart-5: #1a3532;
-    --sidebar: #121b1e;
-    --sidebar-foreground: #e6ecea;
+    --sidebar: #000000;
+    --sidebar-foreground: #edece6;
     --sidebar-primary: #4fbdae;
-    --sidebar-primary-foreground: #06201c;
-    --sidebar-accent: #1e2b2f;
-    --sidebar-accent-foreground: #e6ecea;
-    --sidebar-border: #26343a;
+    --sidebar-primary-foreground: #001a15;
+    --sidebar-accent: #151715;
+    --sidebar-accent-foreground: #edece6;
+    --sidebar-border: #232623;
     --sidebar-ring: #4fbdae;
 }
 
@@ -140,11 +148,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "ss01", "cv11";
+    font-variant-numeric: tabular-nums;
   }
   h1, h2, h3 {
     @apply font-heading;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  /* Thin, quiet scrollbars that sit on black without a grey gutter. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
   }
   ::selection {
     background: color-mix(in oklch, var(--primary) 28%, transparent);
