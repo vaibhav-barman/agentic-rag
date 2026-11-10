@@ -122,7 +122,9 @@ class FakeRepo:
         return next((d for d in self._mine(self.store.documents) if d["id"] == document_id), None)
 
     def find_document_by_filename(self, filename):
-        return next((d for d in self._mine(self.store.documents) if d["filename"] == filename), None)
+        return next(
+            (d for d in self._mine(self.store.documents) if d["filename"] == filename), None
+        )
 
     def find_document_by_hash(self, content_hash):
         return next(

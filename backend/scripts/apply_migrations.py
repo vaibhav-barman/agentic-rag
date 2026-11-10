@@ -13,6 +13,7 @@ run records them as a baseline instead of re-running them.
 
 import sys
 from pathlib import Path
+from typing import LiteralString, cast
 
 import psycopg
 from dotenv import dotenv_values
@@ -63,8 +64,9 @@ def main() -> int:
             return 0
 
         for f in pending:
+            sql = cast("LiteralString", f.read_text())
             with conn.transaction():
-                conn.execute(f.read_text())  # pyright: ignore[reportArgumentType]
+                conn.execute(sql)
                 conn.execute("insert into public.schema_migrations (name) values (%s)", (f.name,))
             print(f"applied   {f.name}")
         if not pending:

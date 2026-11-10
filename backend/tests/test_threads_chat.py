@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.db import get_repo
 from app.main import app
-from app.services import chat as chat_service
 from app.services import llm
 from tests.fakes import FakeRepo, FakeStore, ScriptedLLM, fake_embed
 
@@ -39,8 +38,12 @@ def store():
 
 
 @pytest.fixture
-def client(store):
+def client(store, monkeypatch):
     from app.auth import get_current_user
+
+    # Unit tests script every LLM call; reranking and web search are opted into per test.
+    monkeypatch.setattr(settings, "rerank_enabled", False)
+    monkeypatch.setattr(settings, "tavily_api_key", "")
 
     def repo_override(user=pytest.importorskip("fastapi").Depends(get_current_user)):
         return FakeRepo(store, user.id)
@@ -186,7 +189,10 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
     monkeypatch.setattr(llm, "embed", fake_embed)
     repo = FakeRepo(store, USER_A)
     doc = repo.create_document("facts.txt")
-    repo.insert_chunks(doc["id"], ["The codename is BLUE HERON."], [[1.0, 1.0]])
+    repo.insert_chunks(
+        doc["id"],
+        [{"chunk_index": 0, "content": "The codename is BLUE HERON.", "embedding": [1.0, 1.0]}],
+    )
     repo.update_document(doc["id"], status="completed")
 
     fake = ScriptedLLM(
@@ -208,7 +214,13 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
         ).text
     )
 
-    assert fake.calls[0]["tools"] == [chat_service.FILE_SEARCH_TOOL]
+    assert [t["function"]["name"] for t in fake.calls[0]["tools"]] == [
+        "file_search",
+        "analyze_document",
+        "query_database",
+    ]
+    # The system prompt lists the user's documents so the model can refer to them.
+    assert "facts.txt" in fake.calls[0]["messages"][0]["content"]
     second = fake.calls[1]["messages"]
     assert second[-2]["tool_calls"][0]["function"]["name"] == "file_search"
     assert second[-2]["tool_calls"][0]["extra_content"] == {"google": {"thought_signature": "sig"}}
@@ -219,8 +231,16 @@ def test_file_search_tool_round_trip(client, store, monkeypatch):
     assert sources and sources[0]["query"] == "codename"
     assert sources[0]["sources"][0]["filename"] == "facts.txt"
 
+    # The tool call is shown as a step, live and after a reload.
+    [call] = [d for e, d in events if e == "tool_call"]
+    [result] = [d for e, d in events if e == "tool_result"]
+    assert call["name"] == "file_search" and call["arguments"] == {"query": "codename"}
+    assert result["id"] == call["id"] and result["ok"] and "facts.txt" in result["summary"]
+
     msgs = client.get(f"/threads/{tid}/messages", headers=h(USER_A)).json()
     assert msgs[-1]["sources"][0]["filename"] == "facts.txt"
+    [step] = msgs[-1]["steps"]
+    assert step["name"] == "file_search" and step["ok"] and step["parent_id"] is None
 
 
 def test_tool_rounds_are_capped(client, store, monkeypatch):
