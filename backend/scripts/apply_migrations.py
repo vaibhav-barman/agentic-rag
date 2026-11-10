@@ -5,6 +5,9 @@ Needs SUPABASE_DB_URL in backend/.env (Supabase -> Connect -> Session pooler URI
     venv/bin/python scripts/apply_migrations.py            # apply everything not yet recorded
     venv/bin/python scripts/apply_migrations.py --status   # list applied / pending
     venv/bin/python scripts/apply_migrations.py --baseline 0003   # record 0001-0003 as applied
+    venv/bin/python scripts/apply_migrations.py --sql 0004        # print 0004 onwards as one script
+                                                                 # (no database URL needed; paste
+                                                                 # it into the Supabase SQL Editor)
 
 Each file runs in its own transaction and is recorded in public.schema_migrations.
 Migrations 0001-0003 were applied by hand before this script existed, so the first
@@ -23,7 +26,18 @@ MIGRATIONS = BACKEND.parent / "supabase" / "migrations"
 BASELINE = "0003"
 
 
+def print_sql(first: str) -> int:
+    """Everything from migration `first` onwards as one script for the SQL Editor."""
+    for f in sorted(MIGRATIONS.glob("*.sql")):
+        if f.name[:4] >= first:
+            print(f"-- ===== {f.name} =====\n{f.read_text().rstrip()}\n")
+    print("notify pgrst, 'reload schema';")
+    return 0
+
+
 def main() -> int:
+    if sys.argv[1:2] == ["--sql"]:
+        return print_sql(sys.argv[2] if len(sys.argv) > 2 else "0001")
     url = dotenv_values(BACKEND / ".env").get("SUPABASE_DB_URL")
     if not url:
         print("SUPABASE_DB_URL is not set in backend/.env", file=sys.stderr)
