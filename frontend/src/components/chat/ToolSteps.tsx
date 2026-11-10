@@ -21,7 +21,13 @@ import { cn } from '@/lib/utils'
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v))
 
 /** A plain-language label for each tool call: what the agent did, not the function name. */
-function describe(step: Step): { icon: LucideIcon; label: string; detail?: string } {
+function describe(step: Step): {
+  icon: LucideIcon
+  label: string
+  detail?: string
+  /** The label already says it all; only show the summary if the step failed. */
+  quiet?: boolean
+} {
   const a = step.arguments ?? {}
   switch (step.name) {
     case 'file_search':
@@ -31,15 +37,20 @@ function describe(step: Step): { icon: LucideIcon; label: string; detail?: strin
     case 'web_search':
       return { icon: GlobeIcon, label: 'Searched the web', detail: str(a.query) }
     case 'analyze_document':
+      // The summary ("Read handbook.md (48,210 characters)") says the rest once it is done.
       return {
         icon: BotIcon,
-        label: 'Sub-agent read a whole document',
-        detail: str(step.data?.document),
+        label: 'Sub-agent',
+        detail: step.ok == null ? 'reading the whole document…' : undefined,
       }
     case 'search_in_document':
       return { icon: SearchIcon, label: 'Searched inside the document', detail: str(a.query) }
     case 'read_passages':
-      return { icon: FileTextIcon, label: `Read passages ${str(a.start)}–${str(a.end)}` }
+      return {
+        icon: FileTextIcon,
+        label: `Read passages ${str(a.start)}–${str(a.end)}`,
+        quiet: true,
+      }
     default:
       return { icon: WrenchIcon, label: step.name }
   }
@@ -195,7 +206,7 @@ function Detail({ step, steps }: { step: Step; steps: Step[] }) {
 }
 
 function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
-  const { icon: Icon, label, detail } = describe(step)
+  const { icon: Icon, label, detail, quiet } = describe(step)
   const isSubagent = step.name === 'analyze_document'
   const hasDetail = isSubagent || ['query_database', 'file_search', 'web_search'].includes(step.name)
   const header = (
@@ -204,7 +215,7 @@ function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
       <span className="min-w-0">
         <span className="font-medium text-foreground">{label}</span>
         {detail && <span className="text-muted-foreground"> · {detail}</span>}
-        {step.summary && (
+        {step.summary && !(quiet && step.ok) && (
           <span className={cn('text-muted-foreground', step.ok === false && 'text-destructive')}> — {step.summary}</span>
         )}
       </span>
